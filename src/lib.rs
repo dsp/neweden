@@ -16,7 +16,6 @@ pub trait Navigatable {
     fn get_systems(&self) -> Vec<types::System>;
 }
 
-
 #[cfg(test)]
 mod tests {
     #[test]

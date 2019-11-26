@@ -27,14 +27,10 @@ pub struct StargateConnection {
 }
 
 #[derive(Debug)]
-pub struct BridgeConnection {
-
-}
+pub struct BridgeConnection {}
 
 #[derive(Debug)]
-pub struct WormholeConnection {
-
-}
+pub struct WormholeConnection {}
 
 #[derive(Debug)]
 pub struct Coordinate {
@@ -53,9 +49,7 @@ pub struct System {
 // TODO: implement PartialEq for System
 
 #[derive(Debug)]
-pub struct Celestial {
-
-}
+pub struct Celestial {}
 
 #[derive(Debug)]
 pub struct Universe {

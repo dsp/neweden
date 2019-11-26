@@ -1,15 +1,13 @@
 use anyhow;
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 
-use crate::types;
 use crate::schema;
+use crate::types;
 
 type DB = diesel::pg::Pg;
 
-pub struct DatabaseBuilder {
-
-}
+pub struct DatabaseBuilder {}
 
 pub fn establish_connection(uri: &str) -> anyhow::Result<PgConnection> {
     let conn = PgConnection::establish(&uri)?;
@@ -63,33 +61,30 @@ impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
     );
 
     fn build(row: Self::Row) -> Self {
-        types::Connection::Jump(
-            types::StargateConnection {
-                from: types::SystemId(row.2 as u32),
-                to: types::SystemId(row.3 as u32),
-                jump_type: match (row.0, row.1, row.4, row.5) {
-                    (a, _, _, b) if a != b => types::StargateType::Regional,
-                    (_, a, b, _) if a != b => types::StargateType::Constellation,
-                    _ => types::StargateType::Local,
-                },
-            }
-        )
+        types::Connection::Jump(types::StargateConnection {
+            from: types::SystemId(row.2 as u32),
+            to: types::SystemId(row.3 as u32),
+            jump_type: match (row.0, row.1, row.4, row.5) {
+                (a, _, _, b) if a != b => types::StargateType::Regional,
+                (_, a, b, _) if a != b => types::StargateType::Constellation,
+                _ => types::StargateType::Local,
+            },
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
-    use schema::mapSolarSystems::dsl::*;
     use schema::mapSolarSystemJumps::dsl::*;
+    use schema::mapSolarSystems::dsl::*;
+    use std::env;
 
     #[test]
     fn test_simple_system_query() {
-        let uri = env::var("DATABASE_URL")
-            .expect("expected env variable DATABASE_URL set");
-        let conn = establish_connection(&uri)
-            .expect("expected postgres connection to be established");
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let conn =
+            establish_connection(&uri).expect("expected postgres connection to be established");
         let system = mapSolarSystems
             .filter(solarSystemID.eq(30000049))
             .limit(1)
@@ -100,15 +95,18 @@ mod tests {
 
     #[test]
     fn test_simple_connection_query() {
-        let uri = env::var("DATABASE_URL")
-            .expect("expected env variable DATABASE_URL set");
-        let conn = establish_connection(&uri)
-            .expect("expected postgres connection to be established");
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let conn =
+            establish_connection(&uri).expect("expected postgres connection to be established");
         let res = mapSolarSystemJumps
             .filter(
-                fromSolarSystemID.eq(30000049).and(toSolarSystemID.eq(30000045))
-                .or(
-                    fromSolarSystemID.eq(30000015).and(toSolarSystemID.eq(30001047))))
+                fromSolarSystemID
+                    .eq(30000049)
+                    .and(toSolarSystemID.eq(30000045))
+                    .or(fromSolarSystemID
+                        .eq(30000015)
+                        .and(toSolarSystemID.eq(30001047))),
+            )
             .limit(2)
             .order_by(fromSolarSystemID)
             .load::<types::Connection>(&conn)
@@ -121,8 +119,8 @@ mod tests {
                 assert_eq!(sg2.to, types::SystemId(30000045));
                 assert_eq!(sg1.jump_type, types::StargateType::Regional);
                 assert_eq!(sg2.jump_type, types::StargateType::Local);
-            },
-            _ => assert!(false), 
+            }
+            _ => assert!(false),
         }
     }
 }
