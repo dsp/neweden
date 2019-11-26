@@ -53,14 +53,40 @@ impl Queryable<schema::mapSolarSystems::SqlType, DB> for types::System {
     }
 }
 
+impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
+    type Row = (
+        Option<i32>, // fromRegionID
+        Option<i32>, // fromConstellationID,
+        i32,         // fromSolarSystemID
+        i32,         // toSolarSystemID
+        Option<i32>, // toConstellationID,
+        Option<i32>, // toRegionID,
+    );
+
+    fn build(row: Self::Row) -> Self {
+        types::Connection::Jump(
+            types::StargateConnection {
+                from: types::SystemId(row.2 as u32),
+                to: types::SystemId(row.3 as u32),
+                jump_type: match (row.0, row.1, row.4, row.5) {
+                    (a, _, _, b) if a != b => types::StargateType::Regional,
+                    (_, a, b, _) if a != b => types::StargateType::Constellation,
+                    _ => types::StargateType::Local,
+                },
+            }
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::env;
     use schema::mapSolarSystems::dsl::*;
+    use schema::mapSolarSystemJumps::dsl::*;
 
     #[test]
-    fn test_me() {
+    fn test_simple_system_query() {
         let uri = env::var("DATABASE_URL")
             .expect("expected env variable DATABASE_URL set");
         let conn = establish_connection(&uri)
@@ -71,5 +97,33 @@ mod tests {
             .load::<types::System>(&conn)
             .expect("first row to be returned from postgres");
         assert_eq!("Camal", system[0].name);
+    }
+
+    #[test]
+    fn test_simple_connection_query() {
+        let uri = env::var("DATABASE_URL")
+            .expect("expected env variable DATABASE_URL set");
+        let conn = establish_connection(&uri)
+            .expect("expected postgres connection to be established");
+        let res = mapSolarSystemJumps
+            .filter(
+                fromSolarSystemID.eq(30000049).and(toSolarSystemID.eq(30000045))
+                .or(
+                    fromSolarSystemID.eq(30000015).and(toSolarSystemID.eq(30001047))))
+            .limit(2)
+            .order_by(fromSolarSystemID)
+            .load::<types::Connection>(&conn)
+            .expect("expect connection");
+        match (&res[0], &res[1]) {
+            (types::Connection::Jump(sg1), types::Connection::Jump(sg2)) => {
+                assert_eq!(sg1.from, types::SystemId(30000015));
+                assert_eq!(sg1.to, types::SystemId(30001047));
+                assert_eq!(sg2.from, types::SystemId(30000049));
+                assert_eq!(sg2.to, types::SystemId(30000045));
+                assert_eq!(sg1.jump_type, types::StargateType::Regional);
+                assert_eq!(sg2.jump_type, types::StargateType::Local);
+            },
+            _ => assert!(false), 
+        }
     }
 }

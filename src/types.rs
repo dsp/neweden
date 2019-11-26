@@ -1,4 +1,6 @@
-#[derive(Debug)]
+use std::collections::HashMap;
+
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SystemId(pub u32);
 #[derive(Debug)]
 pub struct SecurityStatus(pub f32);
@@ -10,9 +12,18 @@ pub enum Connection {
     Wormhole(WormholeConnection),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum StargateType {
+    Local,
+    Constellation,
+    Regional,
+}
+
 #[derive(Debug)]
 pub struct StargateConnection {
-
+    pub(crate) from: SystemId,
+    pub(crate) to: SystemId,
+    pub(crate) jump_type: StargateType,
 }
 
 #[derive(Debug)]
@@ -48,6 +59,6 @@ pub struct Celestial {
 
 #[derive(Debug)]
 pub struct Universe {
-    pub(crate) systems: Vec<System>,
+    pub(crate) systems: HashMap<SystemId, System>,
     pub(crate) connections: Vec<Connection>,
 }
