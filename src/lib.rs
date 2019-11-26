@@ -1,10 +1,11 @@
-#[macro_use]
-extern crate diesel;
 
 #[allow(dead_code)]
 mod types;
 pub use types::*;
 
+#[cfg(feature = "database")]
+#[macro_use]
+extern crate diesel;
 #[cfg(feature = "database")]
 pub mod database;
 #[cfg(feature = "database")]
