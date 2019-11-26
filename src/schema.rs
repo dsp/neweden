@@ -92,7 +92,7 @@ table! {
         // factionID -> Nullable<Int4>,
         // radius -> Nullable<Float8>,
         // sunTypeID -> Nullable<Int4>,
-        securityClass -> Nullable<Varchar>,
+        // securityClass -> Nullable<Varchar>,
     }
 }
 

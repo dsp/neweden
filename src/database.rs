@@ -28,15 +28,14 @@ impl DatabaseBuilder {
 
 impl Queryable<schema::mapSolarSystems::SqlType, DB> for types::System {
     type Row = (
-        Option<i32>,
-        i32,
-        Option<String>,
-        Option<f64>,
-        Option<f64>,
-        Option<f64>,
-        Option<f64>,
-        Option<f64>,
-        Option<String>,
+        Option<i32>,    // regionID
+        i32,            // solarSystemID
+        Option<String>, // solarSystemName
+        Option<f64>,    // x
+        Option<f64>,    // y
+        Option<f64>,    // z
+        Option<f64>,    // luminosity
+        Option<f64>,    // security
     );
 
     fn build(row: Self::Row) -> Self {
