@@ -30,7 +30,7 @@ impl<'a> Iterator for Path<'a> {
     }
 }
 
-struct PathBuilder<'a> {
+pub struct PathBuilder<'a> {
     universe: &'a types::Universe,
     waypoints: Vec<&'a types::System>,
 }

@@ -62,6 +62,12 @@ pub struct System {
     pub(crate) coordinate: Coordinate,
     pub(crate) security: SecurityStatus,
 }
+
+impl System {
+    pub fn get_id(&self) -> u32 {
+        self.id.0
+    }
+}
 // TODO: implement PartialEq for System
 
 impl std::cmp::Eq for System {}
@@ -86,7 +92,8 @@ pub struct Universe {
     pub(crate) connections: HashMap<SystemId, Vec<Connection>>, // adjacent map
 }
 
-pub trait Navigatable {
-    fn get_connections(&self, system: &System) -> Vec<Connection>;
-    fn get_systems(&self) -> Vec<System>;
+impl Universe {
+    pub fn get_system<'a>(&self, id: u32) -> Option<&System> {
+        self.systems.get(&SystemId(id))
+    }
 }
