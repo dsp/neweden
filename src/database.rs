@@ -26,42 +26,47 @@ impl DatabaseBuilder {
         }
     }
 
-    pub fn finish(&self) -> anyhow::Result<types::Universe> {
+    pub fn build(&self) -> anyhow::Result<types::Universe> {
         let conn = PgConnection::establish(&self.uri)?;
         Self::from_connection(&conn)
     }
 
     pub(self) fn from_connection(conn: &PgConnection) -> anyhow::Result<types::Universe> {
-        let mut systems = HashMap::new();
-        let mut connections = HashMap::new();
+        let mut universe = types::Universe {
+            systems: HashMap::new(),
+            connections: HashMap::new(),
+        };
 
-        systems.extend(
-            mapSolarSystems
-                .filter(solarSystemID.lt(31000000)) // this is k-space
-                .load::<types::System>(conn)?
-                .into_iter() // this allows for a move
-                .map(|sys| (sys.id.clone(), sys)),
-        );
+        let systems = mapSolarSystems
+                // this is k-space and w-space
+                .filter(solarSystemID.lt(32000000))
+                .load::<types::System>(conn)?;
 
-        connections.extend(
-            mapSolarSystemJumps
+        for system in systems {
+            universe.systems.insert(system.id.clone(), system);
+        }
+
+        let jumps = mapSolarSystemJumps
                 .filter(
+                    // only query k-space since w-space has no connections
                     fromSolarSystemID
                         .lt(31000000)
                         .and(toSolarSystemID.lt(31000000)),
                 )
-                .load::<types::Connection>(conn)?
-                .into_iter()
-                .filter_map(|c| match &c {
-                    types::Connection::Jump(sc) => Some((sc.from.clone(), c)),
-                    _ => None,
-                }),
-        );
+                .load::<types::Connection>(conn)?;
 
-        Ok(types::Universe {
-            systems: systems,
-            connections: connections,
-        })
+        for jump in jumps {
+            match &jump {
+                types::Connection::Jump(sc) => {
+                    universe.connections.entry(sc.from.clone())
+                        .or_insert_with(Vec::new)
+                        .push(jump);
+                },
+                _ => {},
+            }
+        }
+
+        Ok(universe)
     }
 }
 
@@ -192,7 +197,7 @@ mod benches {
         let conn = PgConnection::establish(&uri).expect("establish connection");
         b.iter(|| {
             let universe = DatabaseBuilder::from_connection(&conn).unwrap();
-            assert_eq!(5431, universe.systems.len());
+            assert_eq!(8035, universe.systems.len());
         });
     }
 }

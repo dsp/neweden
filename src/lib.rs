@@ -13,11 +13,6 @@ pub mod database;
 #[allow(non_snake_case)]
 mod schema;
 
-pub trait Navigatable {
-    fn get_connections(&self, system: &types::System) -> Vec<types::Connection>;
-    fn get_systems(&self) -> Vec<types::System>;
-}
-
 #[cfg(test)]
 mod tests {
     #[test]

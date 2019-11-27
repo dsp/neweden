@@ -48,14 +48,14 @@ pub struct BridgeConnection {}
 #[derive(Debug)]
 pub struct WormholeConnection {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Coordinate {
     pub(crate) x: f32,
     pub(crate) y: f32,
     pub(crate) z: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct System {
     pub(crate) id: SystemId,
     pub(crate) name: String,
@@ -64,11 +64,30 @@ pub struct System {
 }
 // TODO: implement PartialEq for System
 
+impl std::cmp::Eq for System {}
+impl std::cmp::PartialEq for System {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl std::hash::Hash for System {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+
 #[derive(Debug)]
 pub struct Celestial {}
 
 #[derive(Debug)]
 pub struct Universe {
     pub(crate) systems: HashMap<SystemId, System>,
-    pub(crate) connections: HashMap<SystemId, Connection>, // adjacent map
+    pub(crate) connections: HashMap<SystemId, Vec<Connection>>, // adjacent map
+}
+
+pub trait Navigatable {
+    fn get_connections(&self, system: &System) -> Vec<Connection>;
+    fn get_systems(&self) -> Vec<System>;
 }
