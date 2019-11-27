@@ -99,7 +99,13 @@ mod tests {
         let path = PathBuilder::new(&universe)
             .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
             .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
-            .build();
-        println!("{:#?}", path.unwrap().collect::<Vec<_>>());
+            .build()
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(28, path.len());
+        assert_eq!("Jita", path[0].name);
+        assert_eq!("Iyen-Oursta", path[2].name);
+        assert_eq!("Hek", path[9].name);
+        assert_eq!("Camal", path[27].name);
     }
 }
