@@ -92,6 +92,8 @@ mod tests {
     use crate::database::DatabaseBuilder;
     use std::env;
 
+    extern crate test;
+
     #[test]
     fn test_me() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
@@ -107,5 +109,32 @@ mod tests {
         assert_eq!("Iyen-Oursta", path[2].name);
         assert_eq!("Hek", path[9].name);
         assert_eq!("Camal", path[27].name);
+    }
+
+    #[bench]
+    fn bench_dijkstra(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        b.iter(|| {
+            test::black_box(PathBuilder::new(&universe)
+                .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
+                .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
+                .build()
+                .unwrap());
+        });
+    }
+
+    #[bench]
+    fn bnech_dijkstra_and_collection(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        b.iter(|| {
+            test::black_box(PathBuilder::new(&universe)
+                .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
+                .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
+                .build()
+                .unwrap()
+                .collect::<Vec<_>>());
+        });
     }
 }

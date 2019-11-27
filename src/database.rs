@@ -184,12 +184,11 @@ mod benches {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let conn = PgConnection::establish(&uri).expect("establish connection");
         b.iter(|| {
-            let system = mapSolarSystems
+            test::black_box(mapSolarSystems
                 .filter(solarSystemID.eq(30000049))
                 .limit(1)
                 .load::<types::System>(&conn)
-                .expect("first row to be returned from postgres");
-            assert_eq!("Camal", system[0].name);
+                .expect("first row to be returned from postgres"));
         });
     }
 
@@ -198,8 +197,7 @@ mod benches {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let conn = PgConnection::establish(&uri).expect("establish connection");
         b.iter(|| {
-            let universe = DatabaseBuilder::from_connection(&conn).unwrap();
-            assert_eq!(8035, universe.systems.len());
+            test::black_box(DatabaseBuilder::from_connection(&conn).unwrap());
         });
     }
 }
