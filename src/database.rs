@@ -1,13 +1,18 @@
 use anyhow;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use std::collections::HashMap;
 
 use crate::schema;
+use crate::schema::mapSolarSystemJumps::dsl::*;
+use crate::schema::mapSolarSystems::dsl::*;
 use crate::types;
 
 type DB = diesel::pg::Pg;
 
-pub struct DatabaseBuilder {}
+pub struct DatabaseBuilder {
+    uri: String,
+}
 
 pub fn establish_connection(uri: &str) -> anyhow::Result<PgConnection> {
     let conn = PgConnection::establish(&uri)?;
@@ -15,12 +20,48 @@ pub fn establish_connection(uri: &str) -> anyhow::Result<PgConnection> {
 }
 
 impl DatabaseBuilder {
-    pub fn new() -> Self {
-        unimplemented!();
+    pub fn new(uri: &str) -> Self {
+        Self {
+            uri: uri.to_string(),
+        }
     }
 
-    pub fn finish(&self) -> types::Universe {
-        unimplemented!();
+    pub fn finish(&self) -> anyhow::Result<types::Universe> {
+        let conn = PgConnection::establish(&self.uri)?;
+        Self::from_connection(&conn)
+    }
+
+    pub(self) fn from_connection(conn: &PgConnection) -> anyhow::Result<types::Universe> {
+        let mut systems = HashMap::new();
+        let mut connections = HashMap::new();
+
+        systems.extend(
+            mapSolarSystems
+                .filter(solarSystemID.lt(31000000)) // this is k-space
+                .load::<types::System>(conn)?
+                .into_iter() // this allows for a move
+                .map(|sys| (sys.id.clone(), sys)),
+        );
+
+        connections.extend(
+            mapSolarSystemJumps
+                .filter(
+                    fromSolarSystemID
+                        .lt(31000000)
+                        .and(toSolarSystemID.lt(31000000)),
+                )
+                .load::<types::Connection>(conn)?
+                .into_iter()
+                .filter_map(|c| match &c {
+                    types::Connection::Jump(sc) => Some((sc.from.clone(), c)),
+                    _ => None,
+                }),
+        );
+
+        Ok(types::Universe {
+            systems: systems,
+            connections: connections,
+        })
     }
 }
 
@@ -75,9 +116,8 @@ impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
-    use schema::mapSolarSystemJumps::dsl::*;
-    use schema::mapSolarSystems::dsl::*;
     use std::env;
 
     #[test]
@@ -122,5 +162,37 @@ mod tests {
             }
             _ => assert!(false),
         }
+    }
+}
+
+#[cfg(test)]
+mod benches {
+    extern crate test;
+
+    use super::*;
+    use std::env;
+
+    #[bench]
+    fn bench_simple_system_query(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let conn = PgConnection::establish(&uri).expect("establish connection");
+        b.iter(|| {
+            let system = mapSolarSystems
+                .filter(solarSystemID.eq(30000049))
+                .limit(1)
+                .load::<types::System>(&conn)
+                .expect("first row to be returned from postgres");
+            assert_eq!("Camal", system[0].name);
+        });
+    }
+
+    #[bench]
+    fn bench_build_universe(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let conn = PgConnection::establish(&uri).expect("establish connection");
+        b.iter(|| {
+            let universe = DatabaseBuilder::from_connection(&conn).unwrap();
+            assert_eq!(5431, universe.systems.len());
+        });
     }
 }

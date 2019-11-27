@@ -1,3 +1,4 @@
+#![cfg_attr(test, feature(test))]
 
 #[allow(dead_code)]
 mod types;

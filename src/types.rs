@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SystemId(pub u32);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SecurityStatus(pub f32);
 
 #[derive(Debug)]
@@ -24,6 +24,22 @@ pub struct StargateConnection {
     pub(crate) from: SystemId,
     pub(crate) to: SystemId,
     pub(crate) jump_type: StargateType,
+}
+
+#[derive(Debug)]
+enum SystemClass {
+    KSpace,
+    WSpace,
+}
+
+impl From<&System> for SystemClass {
+    fn from(s: &System) -> Self {
+        match s.id {
+            SystemId(0..=30999999) => Self::KSpace,
+            SystemId(31000000..=31999999) => Self::WSpace,
+            _ => panic!("unknown space."),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -54,5 +70,5 @@ pub struct Celestial {}
 #[derive(Debug)]
 pub struct Universe {
     pub(crate) systems: HashMap<SystemId, System>,
-    pub(crate) connections: Vec<Connection>,
+    pub(crate) connections: HashMap<SystemId, Connection>, // adjacent map
 }
