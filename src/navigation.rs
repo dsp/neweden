@@ -57,7 +57,6 @@ impl<'a> PathBuilder<'a> {
     // In practise it likely doesn't matter.
     pub fn build(self) -> Path<'a> {
         type Cost = u32;
-        // fn successor(system: &types::System) -> Vec<types::System> {
         let u = &self.universe;
         let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
             u.connections[&id] // -> Vec<Connection>
