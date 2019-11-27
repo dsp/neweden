@@ -1,7 +1,6 @@
 use anyhow;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use std::collections::HashMap;
 
 use crate::schema;
 use crate::schema::mapSolarSystemJumps::dsl::*;
@@ -32,19 +31,10 @@ impl DatabaseBuilder {
     }
 
     pub(self) fn from_connection(conn: &PgConnection) -> anyhow::Result<types::Universe> {
-        let mut universe = types::Universe {
-            systems: HashMap::new(),
-            connections: HashMap::new(),
-        };
-
         let systems = mapSolarSystems
             // this is k-space and w-space
             .filter(solarSystemID.lt(32000000))
             .load::<types::System>(conn)?;
-
-        for system in systems {
-            universe.systems.insert(system.id.clone(), system);
-        }
 
         let jumps = mapSolarSystemJumps
             .filter(
@@ -55,20 +45,10 @@ impl DatabaseBuilder {
             )
             .load::<types::Connection>(conn)?;
 
-        for jump in jumps {
-            match &jump {
-                types::Connection::Jump(sc) => {
-                    universe
-                        .connections
-                        .entry(sc.from.clone())
-                        .or_insert_with(Vec::new)
-                        .push(jump);
-                }
-                _ => {}
-            }
-        }
-
-        Ok(universe)
+        Ok(types::Universe {
+            systems: systems.into(),
+            connections: jumps.into(),
+        })
     }
 }
 

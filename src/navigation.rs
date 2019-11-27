@@ -1,4 +1,5 @@
 use crate::types;
+use crate::types::Navigatable;
 use pathfinding::prelude::dijkstra;
 
 pub struct Path<'a> {
@@ -26,7 +27,7 @@ impl<'a> Iterator for Path<'a> {
         }
         let system_id = &self.path[self.cur];
         self.cur += 1;
-        Some(&self.universe.systems[&system_id])
+        self.universe.get_system(system_id.0)
     }
 }
 
@@ -59,13 +60,17 @@ impl<'a> PathBuilder<'a> {
         type Cost = u32;
         let u = &self.universe;
         let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
-            u.connections[&id] // -> Vec<Connection>
-                .iter()
-                .filter_map(|conn| match conn {
-                    types::Connection::Jump(sc) => Some((sc.to.clone(), 1)),
-                    _ => None,
-                })
-                .collect()
+            if let Some(connections) = u.get_connections(id.0) { // -> Vec<Connection>
+                connections
+                    .iter()
+                    .filter_map(|conn| match conn {
+                        types::Connection::Jump(sc) => Some((sc.to.clone(), 1)),
+                        _ => None,
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
         };
 
         let mut result = Vec::new();
@@ -81,6 +86,7 @@ impl<'a> PathBuilder<'a> {
     }
 }
 
+#[cfg(feature = "database")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,12 +96,12 @@ mod tests {
     extern crate test;
 
     #[test]
-    fn test_me() {
+    fn test_dijkstra() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let path = PathBuilder::new(&universe)
-            .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
-            .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
+            .waypoint(&universe.get_system(30000142).unwrap()) // jita
+            .waypoint(&universe.get_system(30000049).unwrap()) // camal
             .build()
             .collect::<Vec<_>>();
         assert_eq!(28, path.len());
@@ -110,10 +116,12 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         b.iter(|| {
-            test::black_box(PathBuilder::new(&universe)
-                .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
-                .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
-                .build());
+            test::black_box(
+                PathBuilder::new(&universe)
+                .waypoint(&universe.get_system(30000142).unwrap()) // jita
+                .waypoint(&universe.get_system(30000049).unwrap()) // camal
+                .build()
+            );
         });
     }
 
@@ -122,11 +130,13 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         b.iter(|| {
-            test::black_box(PathBuilder::new(&universe)
-                .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
-                .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
+            test::black_box(
+                PathBuilder::new(&universe)
+                .waypoint(&universe.get_system(30000142).unwrap()) // jita
+                .waypoint(&universe.get_system(30000049).unwrap()) // camal
                 .build()
-                .collect::<Vec<_>>());
+                .collect::<Vec<_>>()
+            );
         });
     }
 }

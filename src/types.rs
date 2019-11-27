@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SystemId(pub u32);
+
 #[derive(Debug, Clone)]
 pub struct SecurityStatus(pub f32);
 
@@ -86,14 +87,73 @@ impl std::hash::Hash for System {
 #[derive(Debug)]
 pub struct Celestial {}
 
-#[derive(Debug)]
-pub struct Universe {
-    pub(crate) systems: HashMap<SystemId, System>,
-    pub(crate) connections: HashMap<SystemId, Vec<Connection>>, // adjacent map
+pub trait Navigatable {
+    fn get_system<'a>(&self, id: u32) -> Option<&System>;
+    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>>;
 }
 
-impl Universe {
-    pub fn get_system<'a>(&self, id: u32) -> Option<&System> {
-        self.systems.get(&SystemId(id))
+
+#[derive(Debug)]
+pub struct SystemMap(HashMap<SystemId, System>);
+
+impl From<Vec<System>> for SystemMap {
+    fn from(systems: Vec<System>) -> Self {
+        let mut system_map = HashMap::new();
+        for system in systems {
+            system_map.insert(system.id.clone(), system);
+        }
+
+        Self(system_map)
+    }
+}
+
+#[derive(Debug)]
+pub struct AdjacentMap(HashMap<SystemId, Vec<Connection>>);
+
+impl From<Vec<Connection>> for AdjacentMap {
+    fn from(connections: Vec<Connection>) -> Self {
+        let mut adjacent_map = HashMap::new();
+        for connection in connections {
+            match &connection {
+                Connection::Jump(sc) => {
+                    adjacent_map.entry(sc.from.clone()).or_insert_with(Vec::new).push(connection);
+                },
+                _ => panic!("foo"),
+            }
+        }
+
+        Self(adjacent_map)
+    }
+}
+
+#[derive(Debug)]
+pub struct Universe {
+    pub(crate) systems: SystemMap,
+    pub(crate) connections: AdjacentMap,
+}
+
+impl Navigatable for Universe {
+    fn get_system<'a>(&self, id: u32) -> Option<&System> {
+        self.systems.0.get(&SystemId(id))
+    }
+
+    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>> {
+        self.connections.0.get(&SystemId(from))
+    }
+}
+
+#[derive(Debug)]
+pub struct ExtendedUniverse<'a> {
+    universe: &'a Universe,
+    connections: AdjacentMap,
+}
+
+
+impl<'a> ExtendedUniverse<'a> {
+    pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
+        Self {
+            universe: universe,
+            connections: connections,
+        }
     }
 }
