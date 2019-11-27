@@ -77,7 +77,6 @@ impl std::hash::Hash for System {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Celestial {}
 

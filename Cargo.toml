@@ -12,3 +12,4 @@ database = ["diesel"]
 anyhow = "*"
 thiserror = "*"
 diesel = { version = "*", optional = true, features = ["postgres"] }
+pathfinding = "*"

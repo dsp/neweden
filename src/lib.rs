@@ -4,6 +4,9 @@
 mod types;
 pub use types::*;
 
+#[allow(dead_code)]
+pub mod navigation;
+
 #[cfg(feature = "database")]
 #[macro_use]
 extern crate diesel;

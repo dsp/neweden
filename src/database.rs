@@ -38,31 +38,33 @@ impl DatabaseBuilder {
         };
 
         let systems = mapSolarSystems
-                // this is k-space and w-space
-                .filter(solarSystemID.lt(32000000))
-                .load::<types::System>(conn)?;
+            // this is k-space and w-space
+            .filter(solarSystemID.lt(32000000))
+            .load::<types::System>(conn)?;
 
         for system in systems {
             universe.systems.insert(system.id.clone(), system);
         }
 
         let jumps = mapSolarSystemJumps
-                .filter(
-                    // only query k-space since w-space has no connections
-                    fromSolarSystemID
-                        .lt(31000000)
-                        .and(toSolarSystemID.lt(31000000)),
-                )
-                .load::<types::Connection>(conn)?;
+            .filter(
+                // only query k-space since w-space has no connections
+                fromSolarSystemID
+                    .lt(31000000)
+                    .and(toSolarSystemID.lt(31000000)),
+            )
+            .load::<types::Connection>(conn)?;
 
         for jump in jumps {
             match &jump {
                 types::Connection::Jump(sc) => {
-                    universe.connections.entry(sc.from.clone())
+                    universe
+                        .connections
+                        .entry(sc.from.clone())
                         .or_insert_with(Vec::new)
                         .push(jump);
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
 
