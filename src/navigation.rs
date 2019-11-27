@@ -55,7 +55,7 @@ impl<'a> PathBuilder<'a> {
     // TODO: We need to include the Connection itself, otherwise connections can be
     // ambiguous in the rare case that a wormhole leads to the same system next door.
     // In practise it likely doesn't matter.
-    pub fn build(self) -> Option<Path<'a>> {
+    pub fn build(self) -> Path<'a> {
         type Cost = u32;
         // fn successor(system: &types::System) -> Vec<types::System> {
         let u = &self.universe;
@@ -69,10 +69,6 @@ impl<'a> PathBuilder<'a> {
                 .collect()
         };
 
-        if self.waypoints.len() < 2 {
-            return None;
-        }
-
         let mut result = Vec::new();
         for systems_slice in self.waypoints.windows(2) {
             let a = &systems_slice[0];
@@ -82,7 +78,7 @@ impl<'a> PathBuilder<'a> {
             result.extend(np);
         }
 
-        Some(Path::new(self.universe, result))
+        Path::new(self.universe, result)
     }
 }
 
@@ -102,7 +98,6 @@ mod tests {
             .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
             .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
             .build()
-            .unwrap()
             .collect::<Vec<_>>();
         assert_eq!(28, path.len());
         assert_eq!("Jita", path[0].name);
@@ -119,8 +114,7 @@ mod tests {
             test::black_box(PathBuilder::new(&universe)
                 .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
                 .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
-                .build()
-                .unwrap());
+                .build());
         });
     }
 
@@ -133,7 +127,6 @@ mod tests {
                 .waypoint(&universe.systems[&types::SystemId(30000142)]) // jita
                 .waypoint(&universe.systems[&types::SystemId(30000049)]) // camal
                 .build()
-                .unwrap()
                 .collect::<Vec<_>>());
         });
     }
