@@ -3,6 +3,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SystemId(pub u32);
 
+impl From<u32> for SystemId {
+    fn from(other: u32) -> Self {
+        SystemId(other)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SecurityStatus(pub f32);
 
@@ -44,10 +50,16 @@ impl From<&System> for SystemClass {
 }
 
 #[derive(Debug)]
-pub struct BridgeConnection {}
+pub struct BridgeConnection {
+    pub(crate) from: SystemId,
+    pub(crate) to: SystemId,
+}
 
 #[derive(Debug)]
-pub struct WormholeConnection {}
+pub struct WormholeConnection {
+    pub(crate) from: SystemId,
+    pub(crate) to: SystemId,
+}
 
 #[derive(Debug, Clone)]
 pub struct Coordinate {
@@ -115,10 +127,15 @@ impl From<Vec<Connection>> for AdjacentMap {
         let mut adjacent_map = HashMap::new();
         for connection in connections {
             match &connection {
-                Connection::Jump(sc) => {
-                    adjacent_map.entry(sc.from.clone()).or_insert_with(Vec::new).push(connection);
+                Connection::Bridge(b) => {
+                    adjacent_map.entry(b.from.clone()).or_insert_with(Vec::new).push(connection);
                 },
-                _ => panic!("foo"),
+                Connection::Jump(j) => {
+                    adjacent_map.entry(j.from.clone()).or_insert_with(Vec::new).push(connection);
+                },
+                Connection::Wormhole(wh) => {
+                    adjacent_map.entry(wh.from.clone()).or_insert_with(Vec::new).push(connection);
+                },
             }
         }
 
@@ -155,5 +172,17 @@ impl<'a> ExtendedUniverse<'a> {
             universe: universe,
             connections: connections,
         }
+    }
+}
+
+impl<'b> Navigatable for ExtendedUniverse<'b> {
+    fn get_system<'a>(&self, id: u32) -> Option<&System> {
+        self.universe.get_system(id)
+    }
+
+    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>> {
+        self.connections.0.get(&SystemId(from)).or(
+            self.universe.get_connections(from)
+        )
     }
 }

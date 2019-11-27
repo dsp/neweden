@@ -5,11 +5,11 @@ use pathfinding::prelude::dijkstra;
 pub struct Path<'a> {
     path: Vec<types::SystemId>,
     cur: usize,
-    universe: &'a types::Universe,
+    universe: &'a dyn types::Navigatable,
 }
 
 impl<'a> Path<'a> {
-    pub(self) fn new(universe: &'a types::Universe, path: Vec<types::SystemId>) -> Self {
+    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<types::SystemId>) -> Self {
         Self {
             path,
             universe,
@@ -32,12 +32,12 @@ impl<'a> Iterator for Path<'a> {
 }
 
 pub struct PathBuilder<'a> {
-    universe: &'a types::Universe,
+    universe: &'a dyn types::Navigatable,
     waypoints: Vec<&'a types::System>,
 }
 
 impl<'a> PathBuilder<'a> {
-    pub fn new(universe: &'a types::Universe) -> Self {
+    pub fn new(universe: &'a dyn types::Navigatable) -> Self {
         Self {
             universe: universe,
             waypoints: Vec::new(),
@@ -64,8 +64,9 @@ impl<'a> PathBuilder<'a> {
                 connections
                     .iter()
                     .filter_map(|conn| match conn {
-                        types::Connection::Jump(sc) => Some((sc.to.clone(), 1)),
-                        _ => None,
+                        types::Connection::Bridge(b) => Some((b.to.clone(), 1)),
+                        types::Connection::Jump(j) => Some((j.to.clone(), 1)),
+                        types::Connection::Wormhole(wh) => Some((wh.to.clone(), 1)),
                     })
                     .collect()
             } else {
@@ -132,6 +133,51 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
+                .waypoint(&universe.get_system(30000142).unwrap()) // jita
+                .waypoint(&universe.get_system(30000049).unwrap()) // camal
+                .build()
+                .collect::<Vec<_>>()
+            );
+        });
+    }
+
+    #[test]
+    fn test_dijkstra_extended() {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        let adj = vec![
+            types::Connection::Wormhole(types::WormholeConnection {
+                from: 30002718.into(), // Rancer
+                to: 30000004.into(), // Jark
+            })
+        ].into();
+        let extended = types::ExtendedUniverse::new(&universe, adj);
+
+        let path = PathBuilder::new(&extended)
+            .waypoint(&universe.get_system(30000142).unwrap()) // jita
+            .waypoint(&universe.get_system(30000049).unwrap()) // camal
+            .build()
+            .collect::<Vec<_>>();
+        assert_eq!(18, path.len());
+        assert_eq!("Jita", path[0].name);
+        assert_eq!("Iyen-Oursta", path[2].name);
+        assert_eq!("Camal", path[17].name);
+    }
+
+    #[bench]
+    fn bnech_dijkstra_extended(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        let adj = vec![
+            types::Connection::Wormhole(types::WormholeConnection {
+                from: 30002718.into(), // Rancer
+                to: 30000004.into(), // Jark
+            })
+        ].into();
+        let extended = types::ExtendedUniverse::new(&universe, adj);
+        b.iter(|| {
+            test::black_box(
+                PathBuilder::new(&extended)
                 .waypoint(&universe.get_system(30000142).unwrap()) // jita
                 .waypoint(&universe.get_system(30000049).unwrap()) // camal
                 .build()
