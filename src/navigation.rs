@@ -1,5 +1,4 @@
 use crate::types;
-use crate::types::Navigatable;
 use pathfinding::prelude::dijkstra;
 
 pub struct Path<'a> {
@@ -27,7 +26,7 @@ impl<'a> Iterator for Path<'a> {
         }
         let system_id = &self.path[self.cur];
         self.cur += 1;
-        self.universe.get_system(system_id.0)
+        self.universe.get_system(system_id.clone())
     }
 }
 
@@ -60,7 +59,8 @@ impl<'a> PathBuilder<'a> {
         type Cost = u32;
         let u = &self.universe;
         let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
-            if let Some(connections) = u.get_connections(id.0) { // -> Vec<Connection>
+            if let Some(connections) = u.get_connections(id.clone()) {
+                // -> Vec<Connection>
                 connections
                     .iter()
                     .filter_map(|conn| match conn {
@@ -92,6 +92,7 @@ impl<'a> PathBuilder<'a> {
 mod tests {
     use super::*;
     use crate::database::DatabaseBuilder;
+    use crate::types::Navigatable;
     use std::env;
 
     extern crate test;
@@ -101,8 +102,8 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let path = PathBuilder::new(&universe)
-            .waypoint(&universe.get_system(30000142).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049).unwrap()) // camal
+            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
             .build()
             .collect::<Vec<_>>();
         assert_eq!(28, path.len());
@@ -119,9 +120,9 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                .waypoint(&universe.get_system(30000142).unwrap()) // jita
-                .waypoint(&universe.get_system(30000049).unwrap()) // camal
-                .build()
+                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .build(),
             );
         });
     }
@@ -133,10 +134,10 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                .waypoint(&universe.get_system(30000142).unwrap()) // jita
-                .waypoint(&universe.get_system(30000049).unwrap()) // camal
-                .build()
-                .collect::<Vec<_>>()
+                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .build()
+                    .collect::<Vec<_>>(),
             );
         });
     }
@@ -145,17 +146,16 @@ mod tests {
     fn test_dijkstra_extended() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
-        let adj = vec![
-            types::Connection::Wormhole(types::WormholeConnection {
-                from: 30002718.into(), // Rancer
-                to: 30000004.into(), // Jark
-            })
-        ].into();
+        let adj = vec![types::Connection::Wormhole(types::WormholeConnection {
+            from: 30002718.into(), // Rancer
+            to: 30000004.into(),   // Jark
+        })]
+        .into();
         let extended = types::ExtendedUniverse::new(&universe, adj);
 
         let path = PathBuilder::new(&extended)
-            .waypoint(&universe.get_system(30000142).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049).unwrap()) // camal
+            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
             .build()
             .collect::<Vec<_>>();
         assert_eq!(18, path.len());
@@ -168,20 +168,19 @@ mod tests {
     fn bnech_dijkstra_extended(b: &mut test::Bencher) {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
-        let adj = vec![
-            types::Connection::Wormhole(types::WormholeConnection {
-                from: 30002718.into(), // Rancer
-                to: 30000004.into(), // Jark
-            })
-        ].into();
+        let adj = vec![types::Connection::Wormhole(types::WormholeConnection {
+            from: 30002718.into(), // Rancer
+            to: 30000004.into(),   // Jark
+        })]
+        .into();
         let extended = types::ExtendedUniverse::new(&universe, adj);
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&extended)
-                .waypoint(&universe.get_system(30000142).unwrap()) // jita
-                .waypoint(&universe.get_system(30000049).unwrap()) // camal
-                .build()
-                .collect::<Vec<_>>()
+                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .build()
+                    .collect::<Vec<_>>(),
             );
         });
     }

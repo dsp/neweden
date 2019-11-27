@@ -9,6 +9,12 @@ impl From<u32> for SystemId {
     }
 }
 
+impl From<i32> for SystemId {
+    fn from(other: i32) -> Self {
+        SystemId(other as u32)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SecurityStatus(pub f32);
 
@@ -51,14 +57,14 @@ impl From<&System> for SystemClass {
 
 #[derive(Debug)]
 pub struct BridgeConnection {
-    pub(crate) from: SystemId,
-    pub(crate) to: SystemId,
+    pub from: SystemId,
+    pub to: SystemId,
 }
 
 #[derive(Debug)]
 pub struct WormholeConnection {
-    pub(crate) from: SystemId,
-    pub(crate) to: SystemId,
+    pub from: SystemId,
+    pub to: SystemId,
 }
 
 #[derive(Debug, Clone)]
@@ -99,12 +105,6 @@ impl std::hash::Hash for System {
 #[derive(Debug)]
 pub struct Celestial {}
 
-pub trait Navigatable {
-    fn get_system<'a>(&self, id: u32) -> Option<&System>;
-    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>>;
-}
-
-
 #[derive(Debug)]
 pub struct SystemMap(HashMap<SystemId, System>);
 
@@ -128,19 +128,33 @@ impl From<Vec<Connection>> for AdjacentMap {
         for connection in connections {
             match &connection {
                 Connection::Bridge(b) => {
-                    adjacent_map.entry(b.from.clone()).or_insert_with(Vec::new).push(connection);
-                },
+                    adjacent_map
+                        .entry(b.from.clone())
+                        .or_insert_with(Vec::new)
+                        .push(connection);
+                }
                 Connection::Jump(j) => {
-                    adjacent_map.entry(j.from.clone()).or_insert_with(Vec::new).push(connection);
-                },
+                    adjacent_map
+                        .entry(j.from.clone())
+                        .or_insert_with(Vec::new)
+                        .push(connection);
+                }
                 Connection::Wormhole(wh) => {
-                    adjacent_map.entry(wh.from.clone()).or_insert_with(Vec::new).push(connection);
-                },
+                    adjacent_map
+                        .entry(wh.from.clone())
+                        .or_insert_with(Vec::new)
+                        .push(connection);
+                }
             }
         }
 
         Self(adjacent_map)
     }
+}
+
+pub trait Navigatable {
+    fn get_system<'a>(&self, id: SystemId) -> Option<&System>;
+    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>>;
 }
 
 #[derive(Debug)]
@@ -150,12 +164,12 @@ pub struct Universe {
 }
 
 impl Navigatable for Universe {
-    fn get_system<'a>(&self, id: u32) -> Option<&System> {
-        self.systems.0.get(&SystemId(id))
+    fn get_system<'a>(&self, id: SystemId) -> Option<&System> {
+        self.systems.0.get(&id)
     }
 
-    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>> {
-        self.connections.0.get(&SystemId(from))
+    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
+        self.connections.0.get(&from)
     }
 }
 
@@ -164,7 +178,6 @@ pub struct ExtendedUniverse<'a> {
     universe: &'a Universe,
     connections: AdjacentMap,
 }
-
 
 impl<'a> ExtendedUniverse<'a> {
     pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
@@ -176,13 +189,14 @@ impl<'a> ExtendedUniverse<'a> {
 }
 
 impl<'b> Navigatable for ExtendedUniverse<'b> {
-    fn get_system<'a>(&self, id: u32) -> Option<&System> {
+    fn get_system<'a>(&self, id: SystemId) -> Option<&System> {
         self.universe.get_system(id)
     }
 
-    fn get_connections<'a>(&self, from: u32) -> Option<&Vec<Connection>> {
-        self.connections.0.get(&SystemId(from)).or(
-            self.universe.get_connections(from)
-        )
+    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
+        self.connections
+            .0
+            .get(&from)
+            .or(self.universe.get_connections(from))
     }
 }

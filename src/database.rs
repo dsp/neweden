@@ -164,11 +164,13 @@ mod benches {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let conn = PgConnection::establish(&uri).expect("establish connection");
         b.iter(|| {
-            test::black_box(mapSolarSystems
-                .filter(solarSystemID.eq(30000049))
-                .limit(1)
-                .load::<types::System>(&conn)
-                .expect("first row to be returned from postgres"));
+            test::black_box(
+                mapSolarSystems
+                    .filter(solarSystemID.eq(30000049))
+                    .limit(1)
+                    .load::<types::System>(&conn)
+                    .expect("first row to be returned from postgres"),
+            );
         });
     }
 
