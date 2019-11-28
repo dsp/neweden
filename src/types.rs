@@ -445,32 +445,6 @@ mod tests {
     extern crate test;
 
     #[test]
-    fn test_distance_calculation() {
-        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
-        let universe = DatabaseBuilder::new(&uri).build().unwrap();
-        let camal_id = 30000049.into();
-        let faspera_id = 30000044.into();
-        let jita_id = 30000142.into();
-        let camal = universe.get_system(camal_id).unwrap().clone();
-        let faspera = universe.get_system(faspera_id).unwrap().clone();
-        let jita = universe.get_system(jita_id).unwrap().clone();
-
-        assert!(
-            camal.distance(&faspera.to_point()) < Meters::from(Lightyears(7.0)),
-            "{:?} < {:?}",
-            camal.distance(&faspera.to_point()),
-            Meters::from(Lightyears(7.0)),
-        );
-
-        assert!(
-            camal.distance(&jita.to_point()) > Meters::from(Lightyears(7.0)),
-            "{:?} > {:?}",
-            camal.distance(&jita.to_point()),
-            Meters::from(Lightyears(7.0)),
-        );
-    }
-
-    #[test]
     fn test_range_query() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
