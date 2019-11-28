@@ -248,7 +248,7 @@ impl From<Vec<Connection>> for AdjacentMap {
 // TODO: Implement conversions between those
 
 #[derive(Debug, PartialOrd, PartialEq)]
-pub struct Lightyears(f64);
+pub struct Lightyears(pub f64);
 impl From<Lightyears> for Meters {
     fn from(other: Lightyears) -> Self{
         const LY_IN_KM: f64 = 9_460_730_472_580.8;
@@ -257,10 +257,16 @@ impl From<Lightyears> for Meters {
 }
 
 #[derive(Debug, PartialOrd, PartialEq)]
-pub struct Kilometers(f64);
+pub struct Au(pub f64);
+impl From<Au> for Meters {
+    fn from(other: Au) -> Self {
+        const AU_TO_KM: f64 = 149_597_871.0;
+        Meters(other.0 * AU_TO_KM * 1_000.0)
+    }
+}
 
 #[derive(Debug, PartialOrd, PartialEq)]
-pub struct Meters(f64);
+pub struct Kilometers(pub f64);
 impl From<Kilometers> for Meters {
     fn from(other: Kilometers) -> Self{
         Meters(other.0 * 1_000.0)
@@ -268,7 +274,7 @@ impl From<Kilometers> for Meters {
 }
 
 #[derive(Debug, PartialOrd, PartialEq)]
-pub struct Au(f64);
+pub struct Meters(pub f64);
 
 /// Describes universes that are navigatable. Only navigatable universes can be used
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
