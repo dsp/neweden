@@ -2,7 +2,6 @@
 //
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
-
 use std::collections::HashMap;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
@@ -250,11 +249,20 @@ pub trait Navigatable {
 /// ```
 #[derive(Debug)]
 pub struct Universe {
-    pub(crate) systems: SystemMap,
-    pub(crate) connections: AdjacentMap,
+    systems: SystemMap,
+    connections: AdjacentMap,
 }
 
 impl Universe {
+    /// Create a new universe. This is internal to the crate as only a data source
+    /// is allowed to create it.
+    pub(crate) fn new(systems: SystemMap, connections: AdjacentMap) -> Self {
+        Self {
+            systems,
+            connections,
+        }
+    }
+
     pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
         ExtendedUniverse::new(self, connections)
     }

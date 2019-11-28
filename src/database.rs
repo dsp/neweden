@@ -45,10 +45,7 @@ impl DatabaseBuilder {
             )
             .load::<types::Connection>(conn)?;
 
-        Ok(types::Universe {
-            systems: systems.into(),
-            connections: jumps.into(),
-        })
+        Ok(types::Universe::new(systems.into(),jumps.into()))
     }
 }
 
