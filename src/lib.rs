@@ -5,6 +5,9 @@ mod types;
 pub use types::*;
 
 #[allow(dead_code)]
+pub mod rules;
+
+#[allow(dead_code)]
 pub mod navigation;
 
 #[cfg(feature = "database")]

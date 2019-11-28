@@ -3,6 +3,7 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 use std::collections::HashMap;
+use rstar;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
 ///
@@ -60,6 +61,19 @@ pub enum SecurityClass {
     Highsec,
     Lowsec,
     Nullsec,
+}
+
+impl From<&Security> for SecurityClass {
+    fn from(other: &Security) -> Self {
+        let sec = (other.0 * 10.0).round() / 10.0;
+        if sec < 0.0 {
+            Self::Nullsec
+        } else if sec < 0.5 {
+            Self::Lowsec
+        } else {
+            Self::Highsec
+        }
+    }
 }
 
 impl From<Security> for SecurityClass {
@@ -129,9 +143,9 @@ pub enum WormholeType {
 ///     id: 30000142.into(),
 ///     name: "Jita".to_string(),
 ///     coordinate: Coordinate {
-///         x: -1.2906e+17_f32,
-///         y: 6.07553e+16_f32,
-///         z: 1.17469e+17_f32,
+///         x: -1.2906e+17_f64,
+///         y: 6.07553e+16_f64,
+///         z: 1.17469e+17_f64,
 ///     },
 ///     security: 0.9459.into(),
 /// };
@@ -141,6 +155,16 @@ pub enum WormholeType {
 pub enum SystemClass {
     KSpace,
     WSpace,
+}
+
+impl From<System> for SystemClass {
+    fn from(s: System) -> Self {
+        match s.id {
+            SystemId(0..=30999999) => Self::KSpace,
+            SystemId(31000000..=31999999) => Self::WSpace,
+            _ => panic!("unknown space."),
+        }
+    }
 }
 
 impl From<&System> for SystemClass {
@@ -156,9 +180,9 @@ impl From<&System> for SystemClass {
 /// Describes the coordinate of a system in Eve Online.
 #[derive(Debug, Clone)]
 pub struct Coordinate {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 /// Describe a system.
@@ -221,11 +245,37 @@ impl From<Vec<Connection>> for AdjacentMap {
     }
 }
 
+// TODO: Implement conversions between those
+
+#[derive(Debug, PartialOrd, PartialEq)]
+pub struct Lightyears(f64);
+impl From<Lightyears> for Meters {
+    fn from(other: Lightyears) -> Self{
+        const LY_IN_KM: f64 = 9_460_730_472_580.8;
+        Meters(other.0 * LY_IN_KM * 1_000.0)
+    }
+}
+
+#[derive(Debug, PartialOrd, PartialEq)]
+pub struct Kilometers(f64);
+
+#[derive(Debug, PartialOrd, PartialEq)]
+pub struct Meters(f64);
+impl From<Kilometers> for Meters {
+    fn from(other: Kilometers) -> Self{
+        Meters(other.0 * 1_000.0)
+    }
+}
+
+#[derive(Debug, PartialOrd, PartialEq)]
+pub struct Au(f64);
+
 /// Describes universes that are navigatable. Only navigatable universes can be used
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
 pub trait Navigatable {
     fn get_system<'a>(&self, id: SystemId) -> Option<&System>;
     fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>>;
+    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>>;
 }
 
 /// Describes the known systesms and their connections in new eden universe.
@@ -251,15 +301,55 @@ pub trait Navigatable {
 pub struct Universe {
     systems: SystemMap,
     connections: AdjacentMap,
+    rtree: rstar::RTree<System>,
+}
+
+impl System {
+    fn to_point(&self) -> [f64; 3] {
+        [self.coordinate.x, self.coordinate.y, self.coordinate.z]
+    }
+    fn distance(&self, point: &[f64; 3]) -> Meters
+    {
+        let d_x = self.coordinate.x - point[0];
+        let d_y = self.coordinate.y - point[1];
+        let d_z = self.coordinate.z - point[2];
+        let distance = (d_x * d_x + d_y * d_y + d_z * d_z).sqrt();
+        // We must return the squared distance!
+        Meters(distance)
+    }
+}
+
+impl rstar::RTreeObject for System {
+    type Envelope = rstar::AABB<[f64; 3]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        rstar::AABB::from_point(self.to_point())
+    }
+}
+
+impl rstar::PointDistance for System {
+    fn distance_2(&self, point: &[f64; 3]) -> f64
+    {
+        let d_x = self.coordinate.x - point[0];
+        let d_y = self.coordinate.y - point[1];
+        let d_z = self.coordinate.z - point[2];
+        let distance = (d_x * d_x + d_y * d_y + d_z * d_z).sqrt();
+        // We must return the squared distance!
+        distance * distance
+    }
 }
 
 impl Universe {
     /// Create a new universe. This is internal to the crate as only a data source
     /// is allowed to create it.
     pub(crate) fn new(systems: SystemMap, connections: AdjacentMap) -> Self {
+        // TODO: Remove the clone and use references into the map if possible
+        let spatial_data = systems.0.values().map(|s| s.clone()).collect::<Vec<_>>();
+
         Self {
             systems,
             connections,
+            rtree: rstar::RTree::bulk_load(spatial_data),
         }
     }
 
@@ -271,6 +361,15 @@ impl Universe {
 impl Navigatable for Universe {
     fn get_system<'a>(&self, id: SystemId) -> Option<&System> {
         self.systems.0.get(&id)
+    }
+
+    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
+        // it is very important that we use KM, since all distances in the database are in KM, because CCP.
+        let system = self.get_system(from)?;
+        let systems = self.rtree
+            .locate_within_distance(system.to_point(), range.0 * range.0)
+            .collect::<Vec<_>>();
+        Some(systems)
     }
 
     fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
@@ -324,10 +423,75 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
         self.universe.get_system(id)
     }
 
+    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
+        self.universe.get_systems_by_range(from, range)
+    }
+
     fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
         self.connections
             .0
             .get(&from)
             .or(self.universe.get_connections(from))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use crate::database::DatabaseBuilder;
+    use crate::rules;
+
+    extern crate test;
+
+    #[test]
+    fn test_distance_calculation() {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        let camal_id = 30000049.into();
+        let faspera_id = 30000044.into();
+        let jita_id = 30000142.into();
+        let camal = universe.get_system(camal_id).unwrap().clone();
+        let faspera = universe.get_system(faspera_id).unwrap().clone();
+        let jita = universe.get_system(jita_id).unwrap().clone();
+
+        assert!(
+            camal.distance(&faspera.to_point()) < Meters::from(Lightyears(7.0)),
+            "{:?} < {:?}",
+            camal.distance(&faspera.to_point()),
+            Meters::from(Lightyears(7.0)),
+        );
+
+        assert!(
+            camal.distance(&jita.to_point()) > Meters::from(Lightyears(7.0)),
+            "{:?} > {:?}",
+            camal.distance(&jita.to_point()),
+            Meters::from(Lightyears(7.0)),
+        );
+    }
+
+    #[test]
+    fn test_range_query() {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        let camal_id = 30000049.into();
+        // let faspera_id = 30000044.into();
+        let systems = universe.get_systems_by_range(camal_id, Lightyears(7.0).into()).unwrap();
+        let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
+        assert_eq!(115, jumpable.len());
+    }
+
+    #[bench]
+    fn bench_range_query(b: &mut test::Bencher) {
+        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let universe = DatabaseBuilder::new(&uri).build().unwrap();
+        let camal_id: SystemId = 30000049.into();
+        // let faspera_id = 30000044.into();
+        b.iter(move || {
+            test::black_box(
+                universe.get_systems_by_range(camal_id.clone(), Lightyears(7.0).into()));
+        });
+        // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
+        // assert_eq!(115, jumpable.len());
     }
 }

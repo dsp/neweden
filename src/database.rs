@@ -66,9 +66,9 @@ impl Queryable<schema::mapSolarSystems::SqlType, DB> for types::System {
             id: types::SystemId(row.1 as u32),
             name: row.2.unwrap(),
             coordinate: types::Coordinate {
-                x: row.3.unwrap() as f32,
-                y: row.4.unwrap() as f32,
-                z: row.5.unwrap() as f32,
+                x: row.3.unwrap(),
+                y: row.4.unwrap(),
+                z: row.5.unwrap(),
             },
             security: types::Security(row.7.unwrap() as f32),
         }
