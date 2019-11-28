@@ -60,7 +60,7 @@ impl From<f32> for Security {
 pub enum SecurityClass {
     Highsec,
     Lowsec,
-    Nullsec
+    Nullsec,
 }
 
 impl From<Security> for SecurityClass {
@@ -97,7 +97,7 @@ pub enum ConnectionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BridgeType {
     // TODO: introduce a type JumpDrive
-    Titan(u8, u8), // jump drive calibration, jump fuel conservation
+    Titan(u8, u8),    // jump drive calibration, jump fuel conservation
     BlackOps(u8, u8), // jump drive calibration, jump fuel conservation
 }
 
@@ -113,9 +113,9 @@ pub enum StargateType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WormholeType {
     VeryLarge, // everything, except supers+
-    Large, // battleships
-    Medium, // battlecruisers, etc
-    Small, // frigates, etc
+    Large,     // battleships
+    Medium,    // battlecruisers, etc
+    Small,     // frigates, etc
 }
 
 /// Defines a system class. A system is either part of

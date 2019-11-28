@@ -98,7 +98,7 @@ impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
         types::Connection {
             from: types::SystemId(row.2 as u32),
             to: types::SystemId(row.3 as u32),
-            type_: types::ConnectionType::Stargate(stargate_type)
+            type_: types::ConnectionType::Stargate(stargate_type),
         }
     }
 }

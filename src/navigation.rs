@@ -49,13 +49,13 @@ impl Preference {
                     types::SecurityClass::Highsec => 1,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1000,
                 }
-            },
+            }
             Self::LowsecAndNullsec => {
                 match universe.get_system(to).unwrap().security.clone().into() {
                     types::SecurityClass::Highsec => 1000,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
                 }
-            },
+            }
         }
     }
 }
@@ -244,7 +244,7 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                // this is the longest direct route in eve, 99 jumps
+                    // this is the longest direct route in eve, 99 jumps
                     .waypoint(&universe.get_system(30001947.into()).unwrap()) // 373Z-7
                     .waypoint(&universe.get_system(30004377.into()).unwrap()) // SVB-RE
                     .build()
