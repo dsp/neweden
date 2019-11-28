@@ -15,8 +15,28 @@ impl From<i32> for SystemId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SecurityStatus(pub f32);
+
+#[derive(Debug, Copy, Clone)]
+pub enum SecurityClass {
+    Highsec,
+    Lowsec,
+    Nullsec
+}
+
+impl From<SecurityStatus> for SecurityClass {
+    fn from(other: SecurityStatus) -> Self {
+        let sec = (other.0 * 10.0).round() / 10.0;
+        if sec < 0.0 {
+            Self::Nullsec
+        } else if sec < 0.5 {
+            Self::Lowsec
+        } else {
+            Self::Highsec
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum Connection {
