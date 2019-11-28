@@ -93,10 +93,9 @@ impl<'a> PathBuilder<'a> {
             if let Some(connections) = self.universe.get_connections(id.clone()) {
                 connections
                     .iter()
-                    .filter_map(|conn| match conn {
-                        types::Connection::Bridge(b) => Some((b.to.clone(), self.preference.cost(self.universe, b.to.clone()))),
-                        types::Connection::Jump(j) => Some((j.to.clone(), self.preference.cost(self.universe, j.to.clone()))),
-                        types::Connection::Wormhole(wh) => Some((wh.to.clone(), self.preference.cost(self.universe, wh.to.clone()))),
+                    .filter_map(|conn| {
+                        let cost = self.preference.cost(self.universe, conn.to.clone());
+                        Some((conn.to.clone(), cost))
                     })
                     .collect()
             } else {
@@ -258,10 +257,11 @@ mod tests {
     fn test_dijkstra_extended() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
-        let adj = vec![types::Connection::Wormhole(types::WormholeConnection {
+        let adj = vec![types::Connection {
             from: 30002718.into(), // Rancer
             to: 30000004.into(),   // Jark
-        })]
+            type_: types::ConnectionType::Wormhole(types::WormholeType::VeryLarge),
+        }]
         .into();
         let extended = types::ExtendedUniverse::new(&universe, adj);
 
@@ -280,10 +280,11 @@ mod tests {
     fn bnech_dijkstra_extended(b: &mut test::Bencher) {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
-        let adj = vec![types::Connection::Wormhole(types::WormholeConnection {
+        let adj = vec![types::Connection {
             from: 30002718.into(), // Rancer
             to: 30000004.into(),   // Jark
-        })]
+            type_: types::ConnectionType::Wormhole(types::WormholeType::VeryLarge),
+        }]
         .into();
         let extended = types::ExtendedUniverse::new(&universe, adj);
         b.iter(|| {

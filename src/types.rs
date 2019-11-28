@@ -18,7 +18,7 @@ impl From<i32> for SystemId {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SecurityStatus(pub f32);
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SecurityClass {
     Highsec,
     Lowsec,
@@ -39,27 +39,42 @@ impl From<SecurityStatus> for SecurityClass {
 }
 
 #[derive(Debug)]
-pub enum Connection {
-    Jump(StargateConnection),
-    Bridge(BridgeConnection),
-    Wormhole(WormholeConnection),
+pub struct Connection {
+    pub(crate) from: SystemId,
+    pub(crate) to: SystemId,
+    pub(crate) type_: ConnectionType,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
+pub enum ConnectionType {
+    Stargate(StargateType),
+    Bridge(BridgeType),
+    Wormhole(WormholeType),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BridgeType {
+    // TODO: introduce a type JumpDrive
+    Titan(u8, u8), // jump drive calibration, jump fuel conservation
+    BlackOps(u8, u8), // jump drive calibration, jump fuel conservation
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StargateType {
     Local,
     Constellation,
     Regional,
 }
 
-#[derive(Debug)]
-pub struct StargateConnection {
-    pub(crate) from: SystemId,
-    pub(crate) to: SystemId,
-    pub(crate) jump_type: StargateType,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WormholeType {
+    VeryLarge, // everything, except supers+
+    Large, // battleships
+    Medium, // battlecruisers, etc
+    Small, // frigates, etc
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum SystemClass {
     KSpace,
     WSpace,
@@ -73,18 +88,6 @@ impl From<&System> for SystemClass {
             _ => panic!("unknown space."),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct BridgeConnection {
-    pub from: SystemId,
-    pub to: SystemId,
-}
-
-#[derive(Debug)]
-pub struct WormholeConnection {
-    pub from: SystemId,
-    pub to: SystemId,
 }
 
 #[derive(Debug, Clone)]
@@ -107,7 +110,6 @@ impl System {
         self.id.0
     }
 }
-// TODO: implement PartialEq for System
 
 impl std::cmp::Eq for System {}
 impl std::cmp::PartialEq for System {
@@ -123,7 +125,7 @@ impl std::hash::Hash for System {
 }
 
 #[derive(Debug)]
-pub struct Celestial {}
+struct Celestial {}
 
 #[derive(Debug)]
 pub struct SystemMap(HashMap<SystemId, System>);
@@ -146,26 +148,10 @@ impl From<Vec<Connection>> for AdjacentMap {
     fn from(connections: Vec<Connection>) -> Self {
         let mut adjacent_map = HashMap::new();
         for connection in connections {
-            match &connection {
-                Connection::Bridge(b) => {
-                    adjacent_map
-                        .entry(b.from.clone())
-                        .or_insert_with(Vec::new)
-                        .push(connection);
-                }
-                Connection::Jump(j) => {
-                    adjacent_map
-                        .entry(j.from.clone())
-                        .or_insert_with(Vec::new)
-                        .push(connection);
-                }
-                Connection::Wormhole(wh) => {
-                    adjacent_map
-                        .entry(wh.from.clone())
-                        .or_insert_with(Vec::new)
-                        .push(connection);
-                }
-            }
+            adjacent_map
+                .entry(connection.from.clone())
+                .or_insert_with(Vec::new)
+                .push(connection);
         }
 
         Self(adjacent_map)

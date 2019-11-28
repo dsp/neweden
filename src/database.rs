@@ -89,15 +89,17 @@ impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
     );
 
     fn build(row: Self::Row) -> Self {
-        types::Connection::Jump(types::StargateConnection {
+        let stargate_type = match (row.0, row.1, row.4, row.5) {
+            (a, _, _, b) if a != b => types::StargateType::Regional,
+            (_, a, b, _) if a != b => types::StargateType::Constellation,
+            _ => types::StargateType::Local,
+        };
+
+        types::Connection {
             from: types::SystemId(row.2 as u32),
             to: types::SystemId(row.3 as u32),
-            jump_type: match (row.0, row.1, row.4, row.5) {
-                (a, _, _, b) if a != b => types::StargateType::Regional,
-                (_, a, b, _) if a != b => types::StargateType::Constellation,
-                _ => types::StargateType::Local,
-            },
-        })
+            type_: types::ConnectionType::Stargate(stargate_type)
+        }
     }
 }
 
@@ -138,16 +140,16 @@ mod tests {
             .order_by(fromSolarSystemID)
             .load::<types::Connection>(&conn)
             .expect("expect connection");
-        match (&res[0], &res[1]) {
-            (types::Connection::Jump(sg1), types::Connection::Jump(sg2)) => {
-                assert_eq!(sg1.from, types::SystemId(30000015));
-                assert_eq!(sg1.to, types::SystemId(30001047));
-                assert_eq!(sg2.from, types::SystemId(30000049));
-                assert_eq!(sg2.to, types::SystemId(30000045));
-                assert_eq!(sg1.jump_type, types::StargateType::Regional);
-                assert_eq!(sg2.jump_type, types::StargateType::Local);
-            }
-            _ => assert!(false),
+        let (sg1, sg2) = (&res[0], &res[1]);
+        assert_eq!(sg1.from, types::SystemId(30000015));
+        assert_eq!(sg1.to, types::SystemId(30001047));
+        assert_eq!(sg2.from, types::SystemId(30000049));
+        assert_eq!(sg2.to, types::SystemId(30000045));
+        if let types::ConnectionType::Stargate(jt) = &sg1.type_ {
+            assert_eq!(jt, &types::StargateType::Regional);
+        }
+        if let types::ConnectionType::Stargate(jt) = &sg2.type_ {
+            assert_eq!(jt, &types::StargateType::Local);
         }
     }
 }
