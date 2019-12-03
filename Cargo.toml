@@ -10,7 +10,7 @@ database = ["diesel"]
 
 [dependencies]
 anyhow = "*"
-diesel = { version = "*", optional = true, features = ["postgres"] }
+diesel = { version = "*", optional = true, features = ["postgres", "sqlite"] }
 pathfinding = "*"
 rstar = "*"
 thiserror = "*"
