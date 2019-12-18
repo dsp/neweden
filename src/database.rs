@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2019. David "Tiran'Sol" Soria Parra
+ * All rights reserved.
+ */
+
 use anyhow;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -102,9 +107,9 @@ impl Queryable<schema::mapSolarSystemJumps::SqlType, DB> for types::Connection {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
 
     use super::*;
-    use std::env;
 
     #[test]
     fn test_simple_system_query() {
@@ -155,8 +160,9 @@ mod tests {
 mod benches {
     extern crate test;
 
-    use super::*;
     use std::env;
+
+    use super::*;
 
     #[bench]
     fn bench_simple_system_query(b: &mut test::Bencher) {

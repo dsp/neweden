@@ -1,5 +1,11 @@
-use crate::types;
+/*
+ * Copyright (c) 2019. David "Tiran'Sol" Soria Parra
+ * All rights reserved.
+ */
+
 use pathfinding::prelude::dijkstra;
+
+use crate::types;
 
 pub struct Path<'a> {
     path: Vec<types::SystemId>,
@@ -119,10 +125,12 @@ impl<'a> PathBuilder<'a> {
 #[cfg(feature = "database")]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::env;
+
     use crate::database::DatabaseBuilder;
     use crate::types::Navigatable;
-    use std::env;
+
+    use super::*;
 
     extern crate test;
 

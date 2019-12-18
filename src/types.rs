@@ -1,9 +1,14 @@
+/*
+ * Copyright (c) 2019. David "Tiran'Sol" Soria Parra
+ * All rights reserved.
+ */
+
+use rstar;
 // (c) 2019 David "Tiran'Sol" Soria Parra
 //
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 use std::collections::HashMap;
-use rstar;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
 ///
@@ -443,10 +448,12 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::env;
+
     use crate::database::DatabaseBuilder;
     use crate::rules;
+
+    use super::*;
 
     extern crate test;
 
