@@ -4,10 +4,6 @@
  */
 
 use rstar;
-// (c) 2019 David "Tiran'Sol" Soria Parra
-//
-// This file is subject to the terms and conditions defined in
-// file 'LICENSE', which is part of this source code package.
 use std::collections::HashMap;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
@@ -374,6 +370,10 @@ impl Navigatable for Universe {
         self.systems.0.get(&id)
     }
 
+    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
+        self.connections.0.get(&from)
+    }
+
     fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
         // it is very important that we use KM, since all distances in the database are in KM, because CCP.
         let system = self.get_system(from)?;
@@ -381,10 +381,6 @@ impl Navigatable for Universe {
             .locate_within_distance(system.to_point(), range.0 * range.0)
             .collect::<Vec<_>>();
         Some(systems)
-    }
-
-    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
-        self.connections.0.get(&from)
     }
 }
 
@@ -423,8 +419,8 @@ pub struct ExtendedUniverse<'a> {
 impl<'a> ExtendedUniverse<'a> {
     pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
         Self {
-            universe: universe,
-            connections: connections,
+            universe,
+            connections,
         }
     }
 }
@@ -434,15 +430,15 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
         self.universe.get_system(id)
     }
 
-    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
-        self.universe.get_systems_by_range(from, range)
-    }
-
     fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
         self.connections
             .0
             .get(&from)
             .or(self.universe.get_connections(from))
+    }
+
+    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
+        self.universe.get_systems_by_range(from, range)
     }
 }
 
