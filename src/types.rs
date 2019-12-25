@@ -5,6 +5,7 @@
 
 use rstar;
 use std::collections::HashMap;
+use pathfinding::undirected::connected_components::connected_components;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
 ///
@@ -362,6 +363,20 @@ impl Universe {
 
     pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
         ExtendedUniverse::new(self, connections)
+    }
+
+    pub fn systems(&self) -> Vec<&System> {
+        self.systems.0.values().collect::<Vec<&System>>()
+    }
+
+    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+        let mut connections = Vec::new();
+        for adjacent in self.connections.0.values() {
+            for conn in adjacent {
+               connections.push((conn.from.clone(), conn.to.clone()))
+            }
+        }
+        connections
     }
 }
 
