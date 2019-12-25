@@ -442,7 +442,7 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "database"))]
 mod tests {
     use std::env;
 
