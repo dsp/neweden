@@ -5,7 +5,6 @@
 
 use rstar;
 use std::collections::HashMap;
-use pathfinding::undirected::connected_components::connected_components;
 
 /// Describes the ID of a solar system. Can be casted to from i32 or u32 using .into()
 ///
