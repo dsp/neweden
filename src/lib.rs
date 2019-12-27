@@ -5,14 +5,12 @@
 
 #![cfg_attr(test, feature(test))]
 
+// Must be at the crate root
 #[cfg(feature = "database")]
 #[macro_use]
 extern crate diesel;
-#[cfg(feature = "database")]
-pub mod database;
-#[cfg(feature = "database")]
-#[allow(non_snake_case)]
-mod schema;
+
+pub mod source;
 
 pub use types::*;
 #[allow(dead_code)]

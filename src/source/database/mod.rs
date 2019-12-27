@@ -3,14 +3,16 @@
  * All rights reserved.
  */
 
+#[allow(non_snake_case)]
+mod schema;
+
 use anyhow;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
-use crate::schema;
-use crate::schema::mapSolarSystemJumps::dsl::*;
-use crate::schema::mapSolarSystems::dsl::*;
 use crate::types;
+use schema::mapSolarSystemJumps::dsl::*;
+use schema::mapSolarSystems::dsl::*;
 
 type DB = diesel::pg::Pg;
 

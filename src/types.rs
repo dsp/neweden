@@ -296,7 +296,7 @@ pub trait Navigatable {
 /// # Example
 /// ```
 /// use std::env;
-/// use neweden::database::DatabaseBuilder;
+/// use neweden::source::database::DatabaseBuilder;
 /// use neweden::Navigatable;
 ///
 /// let uri = std::env::var("DATABASE_URL").unwrap();
@@ -345,6 +345,14 @@ impl rstar::PointDistance for System {
 }
 
 impl Universe {
+    pub fn empty() -> Self {
+        Self {
+            systems: SystemMap(HashMap::new()),
+            connections: AdjacentMap(HashMap::new()),
+            rtree: rstar::RTree::new(),
+        }
+    }
+
     /// Create a new universe. This is internal to the crate as only a data source
     /// is allowed to create it.
     pub(crate) fn new(systems: SystemMap, connections: AdjacentMap) -> Self {
@@ -403,7 +411,7 @@ impl Navigatable for Universe {
 /// # Example
 /// ```
 /// use std::env;
-/// use neweden::database::DatabaseBuilder;
+/// use neweden::source::database::DatabaseBuilder;
 /// use neweden::navigation::PathBuilder;
 /// use neweden::Navigatable;
 /// use neweden::{Connection, ConnectionType, WormholeType};
@@ -459,7 +467,7 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
 mod tests {
     use std::env;
 
-    use crate::database::DatabaseBuilder;
+    use crate::source::database::DatabaseBuilder;
     use crate::rules;
 
     use super::*;

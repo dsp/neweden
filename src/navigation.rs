@@ -127,7 +127,7 @@ impl<'a> PathBuilder<'a> {
 mod tests {
     use std::env;
 
-    use crate::database::DatabaseBuilder;
+    use crate::source::database::DatabaseBuilder;
     use crate::types::Navigatable;
 
     use super::*;
