@@ -15,7 +15,7 @@ use std::collections::HashMap;
 /// let system_id: SystemId = 30000142.into(); // returns a SystemId
 /// assert_eq!(system_id, SystemId(30000142));
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct SystemId(pub u32);
 
 impl From<u32> for SystemId {
@@ -31,7 +31,7 @@ impl From<i32> for SystemId {
 }
 
 /// Describes a security rating. A security rating is between -1.0 and 1.0.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct Security(pub f32); // TODO Bound check
 
 impl From<f32> for Security {
@@ -100,7 +100,7 @@ pub struct Connection {
 
 /// The type of connection between two systems.
 /// Can be a bridge, a stargate or a wormhole.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionType {
     Stargate(StargateType),
     Bridge(BridgeType),
@@ -265,6 +265,12 @@ struct Celestial {}
 #[derive(Debug)]
 pub struct SystemMap(HashMap<SystemId, System>);
 
+impl SystemMap {
+    pub fn get(&self, k: &SystemId) -> Option<&System> {
+        self.0.get(k)
+    }
+}
+
 impl From<Vec<System>> for SystemMap {
     fn from(systems: Vec<System>) -> Self {
         let mut system_map = HashMap::new();
@@ -351,9 +357,9 @@ pub struct Meters(pub f64);
 /// Describes universes that are navigatable. Only navigatable universes can be used
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
 pub trait Navigatable {
-    fn get_system<'a>(&self, id: SystemId) -> Option<&System>;
-    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>>;
-    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>>;
+    fn get_system<'a>(&self, id: &SystemId) -> Option<&System>;
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>>;
+    fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>>;
 }
 
 /// Describes the known systesms and their connections in new eden universe.
@@ -457,15 +463,15 @@ impl Universe {
 }
 
 impl Navigatable for Universe {
-    fn get_system<'a>(&self, id: SystemId) -> Option<&System> {
-        self.systems.0.get(&id)
+    fn get_system<'a>(&self, id: &SystemId) -> Option<&System> {
+        self.systems.0.get(id)
     }
 
-    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
-        self.connections.0.get(&from)
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
+        self.connections.0.get(from)
     }
 
-    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
+    fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
         // it is very important that we use KM, since all distances in the database are in KM, because CCP.
         let system = self.get_system(from)?;
         let systems = self
@@ -496,8 +502,8 @@ impl Navigatable for Universe {
 /// let universe = DatabaseBuilder::new(&uri).build().unwrap();
 /// let extended = universe.extend(wormholes.into()); // make into an adjacent map and pass into extend()
 /// let path = PathBuilder::new(&extended)
-///     .waypoint(extended.get_system(30002718.into()).unwrap()) // from Rancer
-///     .waypoint(extended.get_system(30000049.into()).unwrap()) // to Camal
+///     .waypoint(extended.get_system(&30002718.into()).unwrap()) // from Rancer
+///     .waypoint(extended.get_system(&30000049.into()).unwrap()) // to Camal
 ///     .build() // returns an iterator
 ///     .collect::<Vec<_>>();
 /// assert_eq!(2, path.len()); // direct jump through our wormhole
@@ -518,18 +524,18 @@ impl<'a> ExtendedUniverse<'a> {
 }
 
 impl<'b> Navigatable for ExtendedUniverse<'b> {
-    fn get_system<'a>(&self, id: SystemId) -> Option<&System> {
+    fn get_system<'a>(&self, id: &SystemId) -> Option<&System> {
         self.universe.get_system(id)
     }
 
-    fn get_connections<'a>(&self, from: SystemId) -> Option<&Vec<Connection>> {
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
         self.connections
             .0
             .get(&from)
             .or(self.universe.get_connections(from))
     }
 
-    fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
+    fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
         self.universe.get_systems_by_range(from, range)
     }
 }
@@ -563,7 +569,7 @@ mod dbtests {
         let camal_id = 30000049.into();
         // let faspera_id = 30000044.into();
         let systems = universe
-            .get_systems_by_range(camal_id, Lightyears(7.0).into())
+            .get_systems_by_range(&camal_id, Lightyears(7.0).into())
             .unwrap();
         let jumpable = systems
             .into_iter()
@@ -580,7 +586,7 @@ mod dbtests {
         // let faspera_id = 30000044.into();
         b.iter(move || {
             test::black_box(
-                universe.get_systems_by_range(camal_id.clone(), Lightyears(7.0).into()),
+                universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()),
             );
         });
         // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();

@@ -20,11 +20,6 @@ pub struct DatabaseBuilder {
     uri: String,
 }
 
-pub fn establish_connection(uri: &str) -> anyhow::Result<PgConnection> {
-    let conn = PgConnection::establish(&uri)?;
-    Ok(conn)
-}
-
 impl DatabaseBuilder {
     pub fn new(uri: &str) -> Self {
         Self {
@@ -32,7 +27,7 @@ impl DatabaseBuilder {
         }
     }
 
-    pub fn build(&self) -> anyhow::Result<types::Universe> {
+    pub fn build(self) -> anyhow::Result<types::Universe> {
         let conn = PgConnection::establish(&self.uri)?;
         Self::from_connection(&conn)
     }
@@ -117,7 +112,7 @@ mod tests {
     fn test_simple_system_query() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let conn =
-            establish_connection(&uri).expect("expected postgres connection to be established");
+            PgConnection::establish(&uri).expect("expected postgres connection to be established");
         let system = mapSolarSystems
             .filter(solarSystemID.eq(30000049))
             .limit(1)
@@ -130,7 +125,7 @@ mod tests {
     fn test_simple_connection_query() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let conn =
-            establish_connection(&uri).expect("expected postgres connection to be established");
+            PgConnection::establish(&uri).expect("expected postgres connection to be established");
         let res = mapSolarSystemJumps
             .filter(
                 fromSolarSystemID

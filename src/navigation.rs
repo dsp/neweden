@@ -32,7 +32,7 @@ impl<'a> Iterator for Path<'a> {
         }
         let system_id = &self.path[self.cur];
         self.cur += 1;
-        self.universe.get_system(system_id.clone())
+        self.universe.get_system(&system_id)
     }
 }
 
@@ -51,13 +51,13 @@ impl Preference {
             Self::Highsec => {
                 // we must have positive weights
                 // security can go from -1.0 to 1.0
-                match universe.get_system(to).unwrap().security.clone().into() {
+                match universe.get_system(&to).unwrap().security.clone().into() {
                     types::SecurityClass::Highsec => 1,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1000,
                 }
             }
             Self::LowsecAndNullsec => {
-                match universe.get_system(to).unwrap().security.clone().into() {
+                match universe.get_system(&to).unwrap().security.clone().into() {
                     types::SecurityClass::Highsec => 1000,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
                 }
@@ -96,7 +96,7 @@ impl<'a> PathBuilder<'a> {
     // In practise it likely doesn't matter.
     pub fn build(self) -> Path<'a> {
         let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
-            if let Some(connections) = self.universe.get_connections(id.clone()) {
+            if let Some(connections) = self.universe.get_connections(&id) {
                 connections
                     .iter()
                     .filter_map(|conn| {
@@ -139,8 +139,8 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let path = PathBuilder::new(&universe)
-            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+            .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .build()
             .collect::<Vec<_>>();
         assert_eq!(28, path.len());
@@ -155,8 +155,8 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let path = PathBuilder::new(&universe)
-            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+            .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .prefer(Preference::Highsec)
             .build()
             .collect::<Vec<_>>();
@@ -172,8 +172,8 @@ mod tests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let path = PathBuilder::new(&universe)
-            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+            .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .prefer(Preference::LowsecAndNullsec)
             .build()
             .collect::<Vec<_>>();
@@ -191,8 +191,8 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .build(),
             );
         });
@@ -205,8 +205,8 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .build()
                     .collect::<Vec<_>>(),
             );
@@ -220,8 +220,8 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .prefer(Preference::Highsec)
                     .build()
                     .collect::<Vec<_>>(),
@@ -236,8 +236,8 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&universe)
-                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .prefer(Preference::LowsecAndNullsec)
                     .build()
                     .collect::<Vec<_>>(),
@@ -253,8 +253,8 @@ mod tests {
             test::black_box(
                 PathBuilder::new(&universe)
                     // this is the longest direct route in eve, 99 jumps
-                    .waypoint(&universe.get_system(30001947.into()).unwrap()) // 373Z-7
-                    .waypoint(&universe.get_system(30004377.into()).unwrap()) // SVB-RE
+                    .waypoint(&universe.get_system(&30001947.into()).unwrap()) // 373Z-7
+                    .waypoint(&universe.get_system(&30004377.into()).unwrap()) // SVB-RE
                     .build()
                     .collect::<Vec<_>>(),
             );
@@ -274,8 +274,8 @@ mod tests {
         let extended = types::ExtendedUniverse::new(&universe, adj);
 
         let path = PathBuilder::new(&extended)
-            .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-            .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+            .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+            .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .build()
             .collect::<Vec<_>>();
         assert_eq!(18, path.len());
@@ -298,8 +298,8 @@ mod tests {
         b.iter(|| {
             test::black_box(
                 PathBuilder::new(&extended)
-                    .waypoint(&universe.get_system(30000142.into()).unwrap()) // jita
-                    .waypoint(&universe.get_system(30000049.into()).unwrap()) // camal
+                    .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
+                    .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .build()
                     .collect::<Vec<_>>(),
             );
