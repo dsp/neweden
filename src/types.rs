@@ -111,8 +111,55 @@ pub enum ConnectionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BridgeType {
     // TODO: introduce a type JumpDrive
-    Titan(u8, u8),    // jump drive calibration, jump fuel conservation
-    BlackOps(u8, u8), // jump drive calibration, jump fuel conservation
+    Titan(JumpdriveSkills),    // jump drive calibration, jump fuel conservation
+    BlackOps(JumpdriveSkills), // jump drive calibration, jump fuel conservation
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JumpdriveSkills {
+    jump_drive_calibration: u8,
+    fuel_conversation: u8
+}
+
+impl JumpdriveSkills {
+    pub fn new(jump_drive_calibration: u8, fuel_conversation: u8) -> Self {
+        Self {
+            jump_drive_calibration,
+            fuel_conversation
+        }
+    }
+
+    pub fn range_from_base(&self, ly: Lightyears) -> Lightyears {
+        let jdc = f64::from(self.jump_drive_calibration);
+        ly + (ly * 0.2 * jdc)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JumpdriveShip {
+    BlackOps(JumpdriveSkills),
+    CapitalIndustrial(JumpdriveSkills),
+    Carrier(JumpdriveSkills),
+    Dreadnought(JumpdriveSkills),
+    ForceAuxiliary(JumpdriveSkills),
+    Jumpfreighter(JumpdriveSkills),
+    Supercarrier(JumpdriveSkills),
+    Titan(JumpdriveSkills),
+}
+
+impl std::convert::Into<Lightyears> for JumpdriveShip {
+    fn into(self) -> Lightyears {
+        match self {
+            Self::BlackOps(skills) => skills.range_from_base(Lightyears(4.0)),
+            Self::CapitalIndustrial(skills) => skills.range_from_base(Lightyears(5.0)),
+            Self::Carrier(skills) => skills.range_from_base(Lightyears(3.5)),
+            Self::Dreadnought(skills) => skills.range_from_base(Lightyears(3.5)),
+            Self::ForceAuxiliary(skills) => skills.range_from_base(Lightyears(3.5)),
+            Self::Jumpfreighter(skills) => skills.range_from_base(Lightyears(5.0)),
+            Self::Supercarrier(skills) => skills.range_from_base(Lightyears(3.0)),
+            Self::Titan(skills) => skills.range_from_base(Lightyears(3.0)),
+        }
+    }
 }
 
 /// Information about a stargate.
@@ -248,7 +295,7 @@ impl From<Vec<Connection>> for AdjacentMap {
 
 // TODO: Implement conversions between those
 
-#[derive(Debug, PartialOrd, PartialEq)]
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub struct Lightyears(pub f64);
 impl From<Lightyears> for Meters {
     fn from(other: Lightyears) -> Self {
@@ -257,7 +304,31 @@ impl From<Lightyears> for Meters {
     }
 }
 
-#[derive(Debug, PartialOrd, PartialEq)]
+impl std::ops::Add for Lightyears {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Lightyears(self.0 + rhs.0)
+    }
+}
+
+impl std::ops::Mul for Lightyears {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Lightyears(self.0 * rhs.0)
+    }
+}
+
+impl std::ops::Mul<f64> for Lightyears {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Lightyears(self.0 * rhs)
+    }
+}
+
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub struct Au(pub f64);
 impl From<Au> for Meters {
     fn from(other: Au) -> Self {
@@ -266,7 +337,7 @@ impl From<Au> for Meters {
     }
 }
 
-#[derive(Debug, PartialOrd, PartialEq)]
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub struct Kilometers(pub f64);
 impl From<Kilometers> for Meters {
     fn from(other: Kilometers) -> Self {
@@ -274,7 +345,7 @@ impl From<Kilometers> for Meters {
     }
 }
 
-#[derive(Debug, PartialOrd, PartialEq)]
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub struct Meters(pub f64);
 
 /// Describes universes that are navigatable. Only navigatable universes can be used
@@ -463,8 +534,19 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
     }
 }
 
-#[cfg(all(test, feature = "database"))]
+#[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ship_range_calculation() {
+        let ly = JumpdriveShip::Titan(JumpdriveSkills::new(5, 1)).into();
+        assert_eq!(Lightyears(6.0), ly);
+    }
+}
+
+#[cfg(all(test, feature = "database"))]
+mod dbtests {
     use std::env;
 
     use crate::source::database::DatabaseBuilder;
