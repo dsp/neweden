@@ -403,8 +403,7 @@ pub trait Navigatable {
 /// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
 ///
 /// # Example
-/// ```ignore
-///
+/// ```
 /// use std::env;
 /// use neweden::source::database::DatabaseBuilder;
 /// use neweden::Navigatable;
@@ -412,6 +411,7 @@ pub trait Navigatable {
 /// let uri = std::env::var("DATABASE_URL").unwrap();
 /// let universe = DatabaseBuilder::new(&uri).build().unwrap();
 /// let system_id = 30000142.into(); // returns a SystemId
+///
 /// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
 /// ```
 #[derive(Debug)]
@@ -455,6 +455,8 @@ impl rstar::PointDistance for System {
 }
 
 impl Universe {
+    /// Create an empty universe with no systems or connections. This can be useful
+    /// as a placeholder, or to extend your own universe using `ExtendedUniverse`.
     pub fn empty() -> Self {
         Self {
             systems: SystemMap(HashMap::new()),
@@ -476,6 +478,9 @@ impl Universe {
         }
     }
 
+    /// Extend the universe with new connections. This is useful to add additional
+    /// connection, for example wormholes and find paths. The extended universe will
+    /// reuse the systems from the existing universe and only take space for new connections.
     pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
         ExtendedUniverse::new(self, connections)
     }
@@ -519,7 +524,7 @@ impl Navigatable for Universe {
 /// to allow pathfinding through wormholes and titan bridges.
 ///
 /// # Example
-/// ```ignore
+/// ```
 /// use std::env;
 /// use neweden::source::database::DatabaseBuilder;
 /// use neweden::navigation::PathBuilder;
