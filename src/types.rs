@@ -107,12 +107,33 @@ pub enum ConnectionType {
     Wormhole(WormholeType),
 }
 
-// Information about a bridge.
+/// The type of bridge. Can be either a titan bridge
+/// or a blackops bridge. Provides information about the
+/// skill-level used. You can calculate the bridge distance
+/// using an `Into` conversion, similar to `JumpdriveShip`.
+///
+/// # Example
+/// ```
+/// use neweden::{BridgeType, Lightyears, JumpdriveSkills};
+///
+/// let titan = BridgeType::Titan(JumpdriveSkills::new(4, 5));
+/// let ly: Lightyears = titan.into();
+/// println!("titan's bridge range with JDC4 is {:?}", ly);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BridgeType {
     // TODO: introduce a type JumpDrive
     Titan(JumpdriveSkills),    // jump drive calibration, jump fuel conservation
     BlackOps(JumpdriveSkills), // jump drive calibration, jump fuel conservation
+}
+
+impl std::convert::Into<Lightyears> for BridgeType {
+    fn into(self) -> Lightyears {
+        match self {
+            Self::BlackOps(skills) => skills.range_from_base(Lightyears(4.0)),
+            Self::Titan(skills) => skills.range_from_base(Lightyears(3.0)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,6 +156,17 @@ impl JumpdriveSkills {
     }
 }
 
+/// Conversion for jumpdrive capable ships.
+/// You can get the jumprange of a ship through Into conversion.
+///
+/// # Example
+/// ```
+/// use neweden::{JumpdriveShip, Lightyears, JumpdriveSkills};
+///
+/// let titan = JumpdriveShip::Titan(JumpdriveSkills::new(5, 5));
+/// let ly: Lightyears = titan.into();
+/// println!("titan's jump range with JDC5 is {:?}", ly);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JumpdriveShip {
     BlackOps(JumpdriveSkills),
@@ -371,7 +403,8 @@ pub trait Navigatable {
 /// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
 ///
 /// # Example
-/// ```
+/// ```ignore
+///
 /// use std::env;
 /// use neweden::source::database::DatabaseBuilder;
 /// use neweden::Navigatable;
@@ -486,7 +519,7 @@ impl Navigatable for Universe {
 /// to allow pathfinding through wormholes and titan bridges.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use std::env;
 /// use neweden::source::database::DatabaseBuilder;
 /// use neweden::navigation::PathBuilder;

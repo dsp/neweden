@@ -16,6 +16,26 @@ use schema::mapSolarSystems::dsl::*;
 
 type DB = diesel::pg::Pg;
 
+/// Loads a universe from a database.
+///
+/// `Universe` implements `Navigatable` and can be used in pathfinding.
+///
+/// `Universe` is intended to be used immutable and can only be instantiated
+/// from a data source such as a database. If you need to add additional connections,
+/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
+/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
+///
+/// # Example
+/// ```
+/// use std::env;
+/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::Navigatable;
+///
+/// let uri = std::env::var("DATABASE_URL").unwrap();
+/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
+/// let system_id = 30000142.into(); // returns a SystemId
+/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
+/// ```
 pub struct DatabaseBuilder {
     uri: String,
 }
