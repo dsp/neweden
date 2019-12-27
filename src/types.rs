@@ -15,7 +15,7 @@ use std::collections::HashMap;
 /// let system_id: SystemId = 30000142.into(); // returns a SystemId
 /// assert_eq!(system_id, SystemId(30000142));
 /// ```
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct SystemId(pub u32);
 
 impl From<u32> for SystemId {
@@ -31,7 +31,7 @@ impl From<i32> for SystemId {
 }
 
 /// Describes a security rating. A security rating is between -1.0 and 1.0.
-#[derive(Debug, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct Security(pub f32); // TODO Bound check
 
 impl From<f32> for Security {
@@ -275,7 +275,7 @@ impl From<Vec<System>> for SystemMap {
     fn from(systems: Vec<System>) -> Self {
         let mut system_map = HashMap::new();
         for system in systems {
-            system_map.insert(system.id.clone(), system);
+            system_map.insert(system.id, system);
         }
 
         Self(system_map)
@@ -290,7 +290,7 @@ impl From<Vec<Connection>> for AdjacentMap {
         let mut adjacent_map = HashMap::new();
         for connection in connections {
             adjacent_map
-                .entry(connection.from.clone())
+                .entry(connection.from)
                 .or_insert_with(Vec::new)
                 .push(connection);
         }
@@ -455,7 +455,7 @@ impl Universe {
         let mut connections = Vec::new();
         for adjacent in self.connections.0.values() {
             for conn in adjacent {
-                connections.push((conn.from.clone(), conn.to.clone()))
+                connections.push((conn.from, conn.to))
             }
         }
         connections

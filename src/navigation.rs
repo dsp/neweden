@@ -51,13 +51,13 @@ impl Preference {
             Self::Highsec => {
                 // we must have positive weights
                 // security can go from -1.0 to 1.0
-                match universe.get_system(&to).unwrap().security.clone().into() {
+                match universe.get_system(&to).unwrap().security.into() {
                     types::SecurityClass::Highsec => 1,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1000,
                 }
             }
             Self::LowsecAndNullsec => {
-                match universe.get_system(&to).unwrap().security.clone().into() {
+                match universe.get_system(&to).unwrap().security.into() {
                     types::SecurityClass::Highsec => 1000,
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
                 }
@@ -100,8 +100,8 @@ impl<'a> PathBuilder<'a> {
                 connections
                     .iter()
                     .filter_map(|conn| {
-                        let cost = self.preference.cost(self.universe, conn.to.clone());
-                        Some((conn.to.clone(), cost))
+                        let cost = self.preference.cost(self.universe, conn.to);
+                        Some((conn.to, cost))
                     })
                     .collect()
             } else {
