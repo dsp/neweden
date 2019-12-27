@@ -16,9 +16,9 @@ mod schema;
 
 pub use types::*;
 #[allow(dead_code)]
-mod types;
-#[allow(dead_code)]
 pub mod rules;
+#[allow(dead_code)]
+mod types;
 
 #[allow(dead_code)]
 pub mod navigation;

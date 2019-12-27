@@ -251,7 +251,7 @@ impl From<Vec<Connection>> for AdjacentMap {
 #[derive(Debug, PartialOrd, PartialEq)]
 pub struct Lightyears(pub f64);
 impl From<Lightyears> for Meters {
-    fn from(other: Lightyears) -> Self{
+    fn from(other: Lightyears) -> Self {
         const LY_IN_KM: f64 = 9_460_730_472_580.8;
         Meters(other.0 * LY_IN_KM * 1_000.0)
     }
@@ -269,7 +269,7 @@ impl From<Au> for Meters {
 #[derive(Debug, PartialOrd, PartialEq)]
 pub struct Kilometers(pub f64);
 impl From<Kilometers> for Meters {
-    fn from(other: Kilometers) -> Self{
+    fn from(other: Kilometers) -> Self {
         Meters(other.0 * 1_000.0)
     }
 }
@@ -315,8 +315,7 @@ impl System {
     fn to_point(&self) -> [f64; 3] {
         [self.coordinate.x, self.coordinate.y, self.coordinate.z]
     }
-    fn distance(&self, point: &[f64; 3]) -> Meters
-    {
+    fn distance(&self, point: &[f64; 3]) -> Meters {
         let d_x = self.coordinate.x - point[0];
         let d_y = self.coordinate.y - point[1];
         let d_z = self.coordinate.z - point[2];
@@ -335,8 +334,7 @@ impl rstar::RTreeObject for System {
 }
 
 impl rstar::PointDistance for System {
-    fn distance_2(&self, point: &[f64; 3]) -> f64
-    {
+    fn distance_2(&self, point: &[f64; 3]) -> f64 {
         let d_x = self.coordinate.x - point[0];
         let d_y = self.coordinate.y - point[1];
         let d_z = self.coordinate.z - point[2];
@@ -372,7 +370,7 @@ impl Universe {
         let mut connections = Vec::new();
         for adjacent in self.connections.0.values() {
             for conn in adjacent {
-               connections.push((conn.from.clone(), conn.to.clone()))
+                connections.push((conn.from.clone(), conn.to.clone()))
             }
         }
         connections
@@ -391,7 +389,8 @@ impl Navigatable for Universe {
     fn get_systems_by_range<'a>(&self, from: SystemId, range: Meters) -> Option<Vec<&System>> {
         // it is very important that we use KM, since all distances in the database are in KM, because CCP.
         let system = self.get_system(from)?;
-        let systems = self.rtree
+        let systems = self
+            .rtree
             .locate_within_distance(system.to_point(), range.0 * range.0)
             .collect::<Vec<_>>();
         Some(systems)
@@ -473,8 +472,13 @@ mod tests {
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let camal_id = 30000049.into();
         // let faspera_id = 30000044.into();
-        let systems = universe.get_systems_by_range(camal_id, Lightyears(7.0).into()).unwrap();
-        let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
+        let systems = universe
+            .get_systems_by_range(camal_id, Lightyears(7.0).into())
+            .unwrap();
+        let jumpable = systems
+            .into_iter()
+            .filter(|x| rules::allows_cynos(x))
+            .collect::<Vec<_>>();
         assert_eq!(115, jumpable.len());
     }
 
@@ -486,7 +490,8 @@ mod tests {
         // let faspera_id = 30000044.into();
         b.iter(move || {
             test::black_box(
-                universe.get_systems_by_range(camal_id.clone(), Lightyears(7.0).into()));
+                universe.get_systems_by_range(camal_id.clone(), Lightyears(7.0).into()),
+            );
         });
         // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
         // assert_eq!(115, jumpable.len());

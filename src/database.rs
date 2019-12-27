@@ -50,7 +50,7 @@ impl DatabaseBuilder {
             )
             .load::<types::Connection>(conn)?;
 
-        Ok(types::Universe::new(systems.into(),jumps.into()))
+        Ok(types::Universe::new(systems.into(), jumps.into()))
     }
 }
 
