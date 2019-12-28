@@ -10,7 +10,7 @@
 //! a CCP static dump from https://www.fuzzwork.co.uk/dump/.
 //!
 //! The library must be compiled with the apprioriate flags. Currently
-//! accepted flags are `database` and `rpc`. `database offers a Postgres
+//! accepted flags are `database` and `rpc`. `database` offers a Postgres
 //! backend using the diesel ORM wrapper. `rpc` is for internal use at
 //! the moment as the dependent crate is not open sourced.
 
