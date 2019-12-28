@@ -2,7 +2,6 @@
  * Copyright (c) 2019. David "Tiran'Sol" Soria Parra
  * All rights reserved.
  */
-
 use rstar;
 use std::collections::HashMap;
 
@@ -515,6 +514,12 @@ impl Navigatable for Universe {
         let systems = self
             .rtree
             .locate_within_distance(system.to_point(), range.0 * range.0)
+            .filter(|s| {
+                match SecurityClass::from(s.security) {
+                    SecurityClass::Lowsec | SecurityClass::Nullsec => true,
+                    SecurityClass::Highsec => false,
+                }
+            })
             .collect::<Vec<_>>();
         Some(systems)
     }
