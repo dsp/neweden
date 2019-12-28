@@ -11,7 +11,7 @@ rpc_types = ["rpc"]
 
 [dependencies]
 anyhow = "*"
-diesel = { version = "*", optional = true, features = ["postgres", "sqlite"] }
+diesel = { version = "*", optional = true, features = ["postgres"] }
 rpc = { path = "../rpc", optional = true }
 pathfinding = "*"
 rstar = "*"
