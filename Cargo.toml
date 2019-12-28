@@ -6,6 +6,7 @@ edition = "2018"
 license = 'MIT'
 repository = 'https://github.com/dsp/neweden'
 description = 'Library for system inforamtion, wayfinding and range queries in Eve Online'
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
