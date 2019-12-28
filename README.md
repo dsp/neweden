@@ -4,6 +4,10 @@
 wayfinding and range queries for the MMORPG [Eve Online](https://eveonline.com)
 from CCP Games.
 
+[![Docs](https://docs.rs/neweden/badge.svg)](https://docs.rs/neweden/)
+[![Crates.io](https://img.shields.io/crates/v/neweden.svg)](https://crates.io/crates/neweden)
+![License](https://img.shields.io/crates/l/neweden.svg)
+
 ## Development status
 The library is under development and in early alpha stages. API's will change
 and your code will break. It also means that the build and test mechanism
