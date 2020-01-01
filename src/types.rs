@@ -31,10 +31,10 @@ impl From<i32> for SystemId {
 
 /// Describes a security rating. A security rating is between -1.0 and 1.0.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
-pub struct Security(pub f32); // TODO Bound check
+pub struct Security(pub f64); // TODO Bound check
 
-impl From<f32> for Security {
-    fn from(other: f32) -> Self {
+impl From<f64> for Security {
+    fn from(other: f64) -> Self {
         Security(other)
     }
 }
@@ -66,7 +66,9 @@ pub enum SecurityClass {
 impl From<&Security> for SecurityClass {
     fn from(other: &Security) -> Self {
         let sec = (other.0 * 10.0).round() / 10.0;
-        if sec < 0.0 {
+        // Some systems in have security status so close to 0.0
+        // that in conversion it can accidentally be treatd positive.
+        if sec < 0.0000001 {
             Self::Nullsec
         } else if sec < 0.5 {
             Self::Lowsec
