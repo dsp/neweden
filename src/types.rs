@@ -124,7 +124,7 @@ pub enum ConnectionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BridgeType {
     // TODO: introduce a type JumpDrive
-    Titan(JumpdriveSkills),    // jump drive calibration, jump fuel conservation
+    Titan(JumpdriveSkills), // jump drive calibration, jump fuel conservation
     BlackOps(JumpdriveSkills), // jump drive calibration, jump fuel conservation
 }
 
@@ -140,14 +140,14 @@ impl std::convert::Into<Lightyears> for BridgeType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JumpdriveSkills {
     jump_drive_calibration: u8,
-    fuel_conversation: u8
+    fuel_conversation: u8,
 }
 
 impl JumpdriveSkills {
     pub fn new(jump_drive_calibration: u8, fuel_conversation: u8) -> Self {
         Self {
             jump_drive_calibration,
-            fuel_conversation
+            fuel_conversation,
         }
     }
 
@@ -516,11 +516,9 @@ impl Navigatable for Universe {
         let systems = self
             .rtree
             .locate_within_distance(system.to_point(), range.0 * range.0)
-            .filter(|s| {
-                match SecurityClass::from(s.security) {
-                    SecurityClass::Lowsec | SecurityClass::Nullsec => true,
-                    SecurityClass::Highsec => false,
-                }
+            .filter(|s| match SecurityClass::from(s.security) {
+                SecurityClass::Lowsec | SecurityClass::Nullsec => true,
+                SecurityClass::Highsec => false,
             })
             .collect::<Vec<_>>();
         Some(systems)
@@ -600,8 +598,8 @@ mod tests {
 mod dbtests {
     use std::env;
 
-    use crate::source::database::DatabaseBuilder;
     use crate::rules;
+    use crate::source::database::DatabaseBuilder;
 
     use super::*;
 
@@ -630,9 +628,7 @@ mod dbtests {
         let camal_id: SystemId = 30000049.into();
         // let faspera_id = 30000044.into();
         b.iter(move || {
-            test::black_box(
-                universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()),
-            );
+            test::black_box(universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()));
         });
         // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
         // assert_eq!(115, jumpable.len());
