@@ -84,6 +84,11 @@ impl<'a> PathBuilder<'a> {
         self
     }
 
+    pub fn waypoints(mut self, systems: Vec<&'a types::System>) -> Self {
+        self.waypoints.extend(systems);
+        self
+    }
+
     pub fn prefer(mut self, preference: Preference) -> Self {
         self.preference = preference;
         self
@@ -116,6 +121,7 @@ impl<'a> PathBuilder<'a> {
             result.extend(np);
         }
 
+        result.dedup();
         Path::new(self.universe, result)
     }
 }
