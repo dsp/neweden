@@ -7,32 +7,54 @@ use pathfinding::prelude::dijkstra;
 
 use crate::types;
 
+#[derive(PartialEq)]
+enum PathElementInternal {
+    System(types::SystemId),
+    Connection(types::ConnectionType)
+}
+
+pub enum PathElement<'a> {
+    System(&'a types::System),
+    Connection(types::ConnectionType),
+}
+
 pub struct Path<'a> {
-    path: Vec<types::SystemId>,
+    path: Vec<PathElementInternal>,
     cur: usize,
     universe: &'a dyn types::Navigatable,
 }
 
 impl<'a> Path<'a> {
-    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<types::SystemId>) -> Self {
+    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<PathElementInternal>) -> Self {
         Self {
             path,
             universe,
             cur: 0,
         }
     }
+    pub fn len(&self) -> usize {
+        self.path.len()
+    }
 }
 
 impl<'a> Iterator for Path<'a> {
-    type Item = &'a types::System;
+    type Item = PathElement<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur >= self.path.len() {
             return None;
         }
-        let system_id = &self.path[self.cur];
+        let res = match &self.path[self.cur] {
+            PathElementInternal::System(id) => {
+                PathElement::System(self.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::Connection(type_) => {
+                PathElement::Connection(type_.clone())
+            },
+        };
         self.cur += 1;
-        self.universe.get_system(&system_id)
+        Some(res)
+        // self.universe.get_system(&system_id)
     }
 }
 
@@ -61,6 +83,24 @@ impl Preference {
                 types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
             },
         }
+    }
+}
+
+#[derive(Eq, Clone)]
+struct Succ {
+    id: types::SystemId,
+    via: Option<types::ConnectionType>,
+}
+
+impl std::hash::Hash for Succ {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl std::cmp::PartialEq for Succ {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 
@@ -98,13 +138,15 @@ impl<'a> PathBuilder<'a> {
     // ambiguous in the rare case that a wormhole leads to the same system next door.
     // In practise it likely doesn't matter.
     pub fn build(self) -> Path<'a> {
-        let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
-            if let Some(connections) = self.universe.get_connections(&id) {
+
+        let successor = |s: &Succ| -> Vec<(Succ, Cost)> {
+            if let Some(connections) = self.universe.get_connections(&s.id) {
                 connections
                     .iter()
                     .filter_map(|conn| {
                         let cost = self.preference.cost(self.universe, conn.to);
-                        Some((conn.to, cost))
+                        let succ = Succ { id: conn.to, via: Some(conn.type_.clone()) };
+                        Some((succ, cost))
                     })
                     .collect()
             } else {
@@ -117,8 +159,13 @@ impl<'a> PathBuilder<'a> {
             let a = &systems_slice[0];
             let b = &systems_slice[1];
             // we operate only on system ids
-            let (np, _) = dijkstra(&a.id, successor, |id: &types::SystemId| *id == b.id).unwrap();
-            result.extend(np);
+            let (np, _) = dijkstra(&Succ{id: a.id, via: None}, successor, |s: &Succ| s.id == b.id).unwrap();
+            for succ in np {
+                if let Some(via) = succ.via {
+                    result.push(PathElementInternal::Connection(via));
+                }
+                result.push(PathElementInternal::System(succ.id));
+            }
         }
 
         result.dedup();
