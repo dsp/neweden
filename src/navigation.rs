@@ -21,19 +21,38 @@ pub enum PathElement<'a> {
 pub struct Path<'a> {
     path: Vec<PathElementInternal>,
     cur: usize,
+    jump_count: usize,
     universe: &'a dyn types::Navigatable,
 }
 
 impl<'a> Path<'a> {
-    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<PathElementInternal>) -> Self {
+    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<PathElementInternal>, jump_count: usize) -> Self {
         Self {
             path,
             universe,
             cur: 0,
+            jump_count,
         }
     }
-    pub fn len(&self) -> usize {
-        self.path.len()
+
+    pub fn jumps(&self) -> usize {
+        self.jump_count
+    }
+    
+    pub fn from(&self) -> Option<&'a types::System> {
+        let id = self.path.get(0)?;
+        match id {
+            PathElementInternal::Connection(_) => None,
+            PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+        }
+    }
+
+    pub fn to(&self) -> Option<&'a types::System> {
+        let id = self.path.get(self.path.len()-1)?;
+        match id {
+            PathElementInternal::Connection(_) => None,
+            PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+        }
     }
 }
 
@@ -154,22 +173,25 @@ impl<'a> PathBuilder<'a> {
             }
         };
 
+        let mut jump_count = 0;
         let mut result = Vec::new();
         for systems_slice in self.waypoints.windows(2) {
             let a = &systems_slice[0];
             let b = &systems_slice[1];
             // we operate only on system ids
             let (np, _) = dijkstra(&Succ{id: a.id, via: None}, successor, |s: &Succ| s.id == b.id).unwrap();
+
             for succ in np {
                 if let Some(via) = succ.via {
                     result.push(PathElementInternal::Connection(via));
+                    jump_count += 1;
                 }
                 result.push(PathElementInternal::System(succ.id));
             }
         }
 
         result.dedup();
-        Path::new(self.universe, result)
+        Path::new(self.universe, result, jump_count)
     }
 }
 
