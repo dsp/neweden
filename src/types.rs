@@ -210,6 +210,7 @@ pub enum WormholeType {
     Large,     // battleships
     Medium,    // battlecruisers, etc
     Small,     // frigates, etc
+    Unknown,
 }
 
 /// Defines a system class. A system is either part of
@@ -572,6 +573,23 @@ impl<'a> ExtendedUniverse<'a> {
             universe,
             connections,
         }
+    }
+
+    pub fn systems(&self) -> Vec<&System> {
+        self.universe.systems()
+    }
+
+    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+        let mut connections = Vec::new();
+        for (from, to) in self.connections() {
+            connections.push((from, to));
+        }
+        for adjacent in self.connections.0.values() {
+            for conn in adjacent {
+                connections.push((conn.from, conn.to))
+            }
+        }
+        connections
     }
 }
 
