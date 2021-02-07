@@ -296,9 +296,12 @@ impl std::hash::Hash for System {
 struct Celestial {}
 
 #[derive(Debug)]
-pub struct SystemMap(HashMap<SystemId, System>);
+pub struct SystemMap(pub(crate) HashMap<SystemId, System>);
 
 impl SystemMap {
+    pub(crate) fn empty() -> Self {
+        Self(HashMap::new())
+    }
     pub fn get(&self, k: &SystemId) -> Option<&System> {
         self.0.get(k)
     }
@@ -316,7 +319,13 @@ impl From<Vec<System>> for SystemMap {
 }
 
 #[derive(Debug)]
-pub struct AdjacentMap(HashMap<SystemId, Vec<Connection>>);
+pub struct AdjacentMap(pub(crate) HashMap<SystemId, Vec<Connection>>);
+
+impl AdjacentMap {
+    pub(crate) fn empty() -> Self {
+        Self(HashMap::new())
+    }
+}
 
 impl From<Vec<Connection>> for AdjacentMap {
     fn from(connections: Vec<Connection>) -> Self {
