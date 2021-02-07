@@ -34,3 +34,31 @@ impl UniverseBuilder {
     }
 }
 
+pub struct ExtendedUniverseBuilder<'a> {
+    universe: &'a types::Universe,
+    connections: types::AdjacentMap,
+}
+
+impl<'a> ExtendedUniverseBuilder<'a> {
+    pub fn new(universe: &'a types::Universe) -> Self {
+        Self {
+            universe,
+            connections: types::AdjacentMap::empty(),
+        }
+    }
+
+    pub fn connection(mut self, connection: types::Connection) -> Self {
+        self.connections.0
+            .entry(connection.from)
+            .or_insert_with(Vec::new)
+            .push(connection);
+        self
+    }
+
+    pub fn build(self) -> types::ExtendedUniverse<'a> {
+        types::ExtendedUniverse::new(
+            self.universe,
+            self.connections,
+        )
+    }
+}
