@@ -156,7 +156,7 @@ impl<'a> PathBuilder<'a> {
     // TODO: We need to include the Connection itself, otherwise connections can be
     // ambiguous in the rare case that a wormhole leads to the same system next door.
     // In practise it likely doesn't matter.
-    pub fn build(self) -> Path<'a> {
+    pub fn build(self) -> Option<Path<'a>> {
 
         let successor = |s: &Succ| -> Vec<(Succ, Cost)> {
             if let Some(connections) = self.universe.get_connections(&s.id) {
@@ -179,19 +179,21 @@ impl<'a> PathBuilder<'a> {
             let a = &systems_slice[0];
             let b = &systems_slice[1];
             // we operate only on system ids
-            let (np, _) = dijkstra(&Succ{id: a.id, via: None}, successor, |s: &Succ| s.id == b.id).unwrap();
-
-            for succ in np {
-                if let Some(via) = succ.via {
-                    result.push(PathElementInternal::Connection(via));
-                    jump_count += 1;
+            if let Some((np, _)) = dijkstra(&Succ{id: a.id, via: None}, successor, |s: &Succ| s.id == b.id) {
+                for succ in np {
+                    if let Some(via) = succ.via {
+                        result.push(PathElementInternal::Connection(via));
+                        jump_count += 1;
+                    }
+                    result.push(PathElementInternal::System(succ.id));
                 }
-                result.push(PathElementInternal::System(succ.id));
+            } else {
+                return None;
             }
         }
 
         result.dedup();
-        Path::new(self.universe, result, jump_count)
+        Some(Path::new(self.universe, result, jump_count))
     }
 }
 
