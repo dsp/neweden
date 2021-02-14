@@ -9,29 +9,33 @@ use crate::types;
 
 #[derive(PartialEq)]
 enum PathElementInternal {
+    Waypoint(types::SystemId),
     System(types::SystemId),
     Connection(types::ConnectionType)
 }
 
 pub enum PathElement<'a> {
+    Waypoint(&'a types::System),
     System(&'a types::System),
     Connection(types::ConnectionType),
 }
 
 pub struct Path<'a> {
-    path: Vec<PathElementInternal>,
     cur: usize,
     jump_count: usize,
+    path: Vec<PathElementInternal>,
     universe: &'a dyn types::Navigatable,
+    waypoints: Vec<&'a types::System>,
 }
 
 impl<'a> Path<'a> {
-    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<PathElementInternal>, jump_count: usize) -> Self {
+    pub(self) fn new(universe: &'a dyn types::Navigatable, waypoints: Vec<&'a types::System>, path: Vec<PathElementInternal>, jump_count: usize) -> Self {
         Self {
-            path,
-            universe,
             cur: 0,
             jump_count,
+            path,
+            universe,
+            waypoints,
         }
     }
 
@@ -44,6 +48,7 @@ impl<'a> Path<'a> {
         match id {
             PathElementInternal::Connection(_) => None,
             PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+            PathElementInternal::Waypoint(id) => Some(self.universe.get_system(&id).unwrap()),
         }
     }
 
@@ -52,6 +57,52 @@ impl<'a> Path<'a> {
         match id {
             PathElementInternal::Connection(_) => None,
             PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+            PathElementInternal::Waypoint(id) => Some(self.universe.get_system(&id).unwrap()),
+        }
+    }
+
+    pub fn iter(&self) -> PathIterator {
+        self.into_iter()
+    }
+}
+
+pub struct PathIterator<'a> {
+    cur: usize,
+    path: &'a Path<'a>,
+}
+
+impl<'a> Iterator for PathIterator<'a> {
+    type Item = PathElement<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur >= self.path.path.len() {
+            return None;
+        }
+        let res = match &self.path.path[self.cur] {
+            PathElementInternal::Waypoint(id) => {
+                PathElement::Waypoint(self.path.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::System(id) => {
+                PathElement::System(self.path.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::Connection(type_) => {
+                PathElement::Connection(type_.clone())
+            },
+        };
+        self.cur += 1;
+        Some(res)
+        // self.universe.get_system(&system_id)
+    }
+}
+
+impl<'a> IntoIterator for &'a Path<'a> {
+    type Item = PathElement<'a>;
+    type IntoIter = PathIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PathIterator {
+            cur: 0,
+            path: self,
         }
     }
 }
@@ -64,6 +115,9 @@ impl<'a> Iterator for Path<'a> {
             return None;
         }
         let res = match &self.path[self.cur] {
+            PathElementInternal::Waypoint(id) => {
+                PathElement::Waypoint(self.universe.get_system(&id).unwrap())
+            },
             PathElementInternal::System(id) => {
                 PathElement::System(self.universe.get_system(&id).unwrap())
             },
@@ -185,7 +239,11 @@ impl<'a> PathBuilder<'a> {
                         result.push(PathElementInternal::Connection(via));
                         jump_count += 1;
                     }
-                    result.push(PathElementInternal::System(succ.id));
+                    if succ.id == a.id || succ.id == b.id {
+                        result.push(PathElementInternal::Waypoint(succ.id));
+                    } else {
+                        result.push(PathElementInternal::System(succ.id));
+                    }
                 }
             } else {
                 return None;
@@ -193,7 +251,7 @@ impl<'a> PathBuilder<'a> {
         }
 
         result.dedup();
-        Some(Path::new(self.universe, result, jump_count))
+        Some(Path::new(self.universe, self.waypoints, result, jump_count))
     }
 }
 

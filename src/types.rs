@@ -92,7 +92,7 @@ impl From<Security> for SecurityClass {
 }
 
 /// Defines a connection between two systems.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Connection {
     pub from: SystemId,
     pub to: SystemId,
@@ -401,7 +401,7 @@ pub struct Meters(pub f64);
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
 pub trait Navigatable {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System>;
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>>;
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>>;
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>>;
 }
 
@@ -516,8 +516,8 @@ impl Navigatable for Universe {
         self.systems.0.get(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections.0.get(from)
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        self.connections.0.get(from).map(|v| v.clone())
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
@@ -598,11 +598,20 @@ impl<'b> Navigatable for ExtendedUniverse<'b> {
         self.universe.get_system(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections
-            .0
-            .get(&from)
-            .or(self.universe.get_connections(from))
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        // TODO: This is highly unoptimal
+        let a = self.connections.0.get(&from);
+        let b = self.universe.get_connections(from);
+        match (a, b) {
+            (Some(a), Some(b)) => {
+                let mut v = a.clone();
+                v.append(&mut b.clone());
+                Some(v)
+            },
+            (Some(a), None) => Some(a.to_vec()),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        }
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
