@@ -405,33 +405,6 @@ pub trait Navigatable {
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>>;
 }
 
-/// Describes the known systesms and their connections in new eden universe.
-/// `Universe` implements `Navigatable` and can be used in pathfinding.
-///
-/// `Universe` is intended to be used immutable and can only be instantiated
-/// from a data source such as a database. If you need to add additional connections,
-/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
-/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
-///
-/// # Example
-/// ```
-/// use std::env;
-/// use neweden::source::database::DatabaseBuilder;
-/// use neweden::Navigatable;
-///
-/// let uri = std::env::var("DATABASE_URL").unwrap();
-/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
-/// let system_id = 30000142.into(); // returns a SystemId
-///
-/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
-/// ```
-#[derive(Debug)]
-pub struct Universe {
-    systems: SystemMap,
-    connections: AdjacentMap,
-    rtree: rstar::RTree<System>,
-}
-
 impl System {
     fn to_point(&self) -> [f64; 3] {
         [self.coordinate.x, self.coordinate.y, self.coordinate.z]
@@ -465,6 +438,38 @@ impl rstar::PointDistance for System {
     }
 }
 
+pub trait Universish {
+    fn connections(&self) -> Vec<(SystemId, SystemId)>;
+    fn systems(&self) -> Vec<&System>;
+}
+
+/// Describes the known systesms and their connections in new eden universe.
+/// `Universe` implements `Navigatable` and can be used in pathfinding.
+///
+/// `Universe` is intended to be used immutable and can only be instantiated
+/// from a data source such as a database. If you need to add additional connections,
+/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
+/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
+///
+/// # Example
+/// ```
+/// use std::env;
+/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::Navigatable;
+///
+/// let uri = std::env::var("DATABASE_URL").unwrap();
+/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
+/// let system_id = 30000142.into(); // returns a SystemId
+///
+/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
+/// ```
+#[derive(Debug)]
+pub struct Universe {
+    systems: SystemMap,
+    connections: AdjacentMap,
+    rtree: rstar::RTree<System>,
+}
+
 impl Universe {
     /// Create an empty universe with no systems or connections. This can be useful
     /// as a placeholder, or to extend your own universe using `ExtendedUniverse`.
@@ -492,15 +497,17 @@ impl Universe {
     /// Extend the universe with new connections. This is useful to add additional
     /// connection, for example wormholes and find paths. The extended universe will
     /// reuse the systems from the existing universe and only take space for new connections.
-    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
+    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse<Self> {
         ExtendedUniverse::new(self, connections)
     }
+}
 
-    pub fn systems(&self) -> Vec<&System> {
+impl Universish for Universe {
+    fn systems(&self) -> Vec<&System> {
         self.systems.0.values().collect::<Vec<&System>>()
     }
 
-    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
         let mut connections = Vec::new();
         for adjacent in self.connections.0.values() {
             for conn in adjacent {
@@ -561,27 +568,29 @@ impl Navigatable for Universe {
 ///     .collect::<Vec<_>>();
 /// assert_eq!(2, path.len()); // direct jump through our wormhole
 /// ```
-#[derive(Debug)]
-pub struct ExtendedUniverse<'a> {
-    universe: &'a Universe,
+pub struct ExtendedUniverse<'a, U> {
+    universe: &'a U,
     connections: AdjacentMap,
 }
 
-impl<'a> ExtendedUniverse<'a> {
-    pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
+impl<'a, U: Universish + Navigatable> ExtendedUniverse<'a, U>
+{
+    pub fn new(universe: &'a U, connections: AdjacentMap) -> Self {
         Self {
             universe,
             connections,
         }
     }
 
-    pub fn systems(&self) -> Vec<&System> {
+}
+impl<'a, U: Universish> Universish for ExtendedUniverse<'a, U> {
+    fn systems(&self) -> Vec<&System> {
         self.universe.systems()
     }
 
-    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
         let mut connections = Vec::new();
-        for (from, to) in self.connections() {
+        for (from, to) in self.universe.connections() {
             connections.push((from, to));
         }
         for adjacent in self.connections.0.values() {
@@ -593,7 +602,7 @@ impl<'a> ExtendedUniverse<'a> {
     }
 }
 
-impl<'b> Navigatable for ExtendedUniverse<'b> {
+impl<'b, U: Navigatable> Navigatable for ExtendedUniverse<'b, U> {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System> {
         self.universe.get_system(id)
     }

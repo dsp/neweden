@@ -184,7 +184,7 @@ impl<'a> PathBuilder<'a> {
     pub fn new(universe: &'a dyn types::Navigatable) -> Self {
         Self {
             universe: universe,
-            waypoints: Vec::new(),
+            waypoints: vec![],
             preference: Preference::Shortest,
         }
     }
@@ -208,7 +208,6 @@ impl<'a> PathBuilder<'a> {
     // ambiguous in the rare case that a wormhole leads to the same system next door.
     // In practise it likely doesn't matter.
     pub fn build(self) -> Option<Path<'a>> {
-
         let successor = |s: &Succ| -> Vec<(Succ, Cost)> {
             if let Some(connections) = self.universe.get_connections(&s.id) {
                 connections
