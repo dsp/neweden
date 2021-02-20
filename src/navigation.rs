@@ -91,7 +91,6 @@ impl<'a> Iterator for PathIterator<'a> {
         };
         self.cur += 1;
         Some(res)
-        // self.universe.get_system(&system_id)
     }
 }
 
@@ -118,8 +117,7 @@ impl<'a> Iterator for Path<'a> {
             PathElementInternal::Waypoint(id) => {
                 PathElement::Waypoint(self.universe.get_system(&id).unwrap())
             },
-            PathElementInternal::System(id) => {
-                PathElement::System(self.universe.get_system(&id).unwrap())
+            PathElementInternal::System(id) => {PathElement::System(self.universe.get_system(&id).unwrap())
             },
             PathElementInternal::Connection(type_) => {
                 PathElement::Connection(type_.clone())
@@ -127,7 +125,6 @@ impl<'a> Iterator for Path<'a> {
         };
         self.cur += 1;
         Some(res)
-        // self.universe.get_system(&system_id)
     }
 }
 
