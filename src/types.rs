@@ -31,10 +31,10 @@ impl From<i32> for SystemId {
 
 /// Describes a security rating. A security rating is between -1.0 and 1.0.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
-pub struct Security(pub f32); // TODO Bound check
+pub struct Security(pub f64); // TODO Bound check
 
-impl From<f32> for Security {
-    fn from(other: f32) -> Self {
+impl From<f64> for Security {
+    fn from(other: f64) -> Self {
         Security(other)
     }
 }
@@ -66,7 +66,9 @@ pub enum SecurityClass {
 impl From<&Security> for SecurityClass {
     fn from(other: &Security) -> Self {
         let sec = (other.0 * 10.0).round() / 10.0;
-        if sec < 0.0 {
+        // Some systems in have security status so close to 0.0
+        // that in conversion it can accidentally be treatd positive.
+        if sec < 0.0000001 {
             Self::Nullsec
         } else if sec < 0.5 {
             Self::Lowsec
@@ -90,7 +92,7 @@ impl From<Security> for SecurityClass {
 }
 
 /// Defines a connection between two systems.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Connection {
     pub from: SystemId,
     pub to: SystemId,
@@ -122,7 +124,7 @@ pub enum ConnectionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BridgeType {
     // TODO: introduce a type JumpDrive
-    Titan(JumpdriveSkills),    // jump drive calibration, jump fuel conservation
+    Titan(JumpdriveSkills), // jump drive calibration, jump fuel conservation
     BlackOps(JumpdriveSkills), // jump drive calibration, jump fuel conservation
 }
 
@@ -138,14 +140,14 @@ impl std::convert::Into<Lightyears> for BridgeType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JumpdriveSkills {
     jump_drive_calibration: u8,
-    fuel_conversation: u8
+    fuel_conversation: u8,
 }
 
 impl JumpdriveSkills {
     pub fn new(jump_drive_calibration: u8, fuel_conversation: u8) -> Self {
         Self {
             jump_drive_calibration,
-            fuel_conversation
+            fuel_conversation,
         }
     }
 
@@ -208,6 +210,7 @@ pub enum WormholeType {
     Large,     // battleships
     Medium,    // battlecruisers, etc
     Small,     // frigates, etc
+    Unknown,
 }
 
 /// Defines a system class. A system is either part of
@@ -294,9 +297,12 @@ impl std::hash::Hash for System {
 struct Celestial {}
 
 #[derive(Debug)]
-pub struct SystemMap(HashMap<SystemId, System>);
+pub struct SystemMap(pub(crate) HashMap<SystemId, System>);
 
 impl SystemMap {
+    pub(crate) fn empty() -> Self {
+        Self(HashMap::new())
+    }
     pub fn get(&self, k: &SystemId) -> Option<&System> {
         self.0.get(k)
     }
@@ -314,7 +320,13 @@ impl From<Vec<System>> for SystemMap {
 }
 
 #[derive(Debug)]
-pub struct AdjacentMap(HashMap<SystemId, Vec<Connection>>);
+pub struct AdjacentMap(pub(crate) HashMap<SystemId, Vec<Connection>>);
+
+impl AdjacentMap {
+    pub(crate) fn empty() -> Self {
+        Self(HashMap::new())
+    }
+}
 
 impl From<Vec<Connection>> for AdjacentMap {
     fn from(connections: Vec<Connection>) -> Self {
@@ -389,35 +401,8 @@ pub struct Meters(pub f64);
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
 pub trait Navigatable {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System>;
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>>;
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>>;
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>>;
-}
-
-/// Describes the known systesms and their connections in new eden universe.
-/// `Universe` implements `Navigatable` and can be used in pathfinding.
-///
-/// `Universe` is intended to be used immutable and can only be instantiated
-/// from a data source such as a database. If you need to add additional connections,
-/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
-/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
-///
-/// # Example
-/// ```
-/// use std::env;
-/// use neweden::source::database::DatabaseBuilder;
-/// use neweden::Navigatable;
-///
-/// let uri = std::env::var("DATABASE_URL").unwrap();
-/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
-/// let system_id = 30000142.into(); // returns a SystemId
-///
-/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
-/// ```
-#[derive(Debug)]
-pub struct Universe {
-    systems: SystemMap,
-    connections: AdjacentMap,
-    rtree: rstar::RTree<System>,
 }
 
 impl System {
@@ -453,6 +438,38 @@ impl rstar::PointDistance for System {
     }
 }
 
+pub trait Universish {
+    fn connections(&self) -> Vec<(SystemId, SystemId)>;
+    fn systems(&self) -> Vec<&System>;
+}
+
+/// Describes the known systesms and their connections in new eden universe.
+/// `Universe` implements `Navigatable` and can be used in pathfinding.
+///
+/// `Universe` is intended to be used immutable and can only be instantiated
+/// from a data source such as a database. If you need to add additional connections,
+/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
+/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
+///
+/// # Example
+/// ```
+/// use std::env;
+/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::Navigatable;
+///
+/// let uri = std::env::var("DATABASE_URL").unwrap();
+/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
+/// let system_id = 30000142.into(); // returns a SystemId
+///
+/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
+/// ```
+#[derive(Debug)]
+pub struct Universe {
+    systems: SystemMap,
+    connections: AdjacentMap,
+    rtree: rstar::RTree<System>,
+}
+
 impl Universe {
     /// Create an empty universe with no systems or connections. This can be useful
     /// as a placeholder, or to extend your own universe using `ExtendedUniverse`.
@@ -480,15 +497,17 @@ impl Universe {
     /// Extend the universe with new connections. This is useful to add additional
     /// connection, for example wormholes and find paths. The extended universe will
     /// reuse the systems from the existing universe and only take space for new connections.
-    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
+    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse<Self> {
         ExtendedUniverse::new(self, connections)
     }
+}
 
-    pub fn systems(&self) -> Vec<&System> {
+impl Universish for Universe {
+    fn systems(&self) -> Vec<&System> {
         self.systems.0.values().collect::<Vec<&System>>()
     }
 
-    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
         let mut connections = Vec::new();
         for adjacent in self.connections.0.values() {
             for conn in adjacent {
@@ -504,8 +523,8 @@ impl Navigatable for Universe {
         self.systems.0.get(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections.0.get(from)
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        self.connections.0.get(from).map(|v| v.clone())
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
@@ -514,11 +533,9 @@ impl Navigatable for Universe {
         let systems = self
             .rtree
             .locate_within_distance(system.to_point(), range.0 * range.0)
-            .filter(|s| {
-                match SecurityClass::from(s.security) {
-                    SecurityClass::Lowsec | SecurityClass::Nullsec => true,
-                    SecurityClass::Highsec => false,
-                }
+            .filter(|s| match SecurityClass::from(s.security) {
+                SecurityClass::Lowsec | SecurityClass::Nullsec => true,
+                SecurityClass::Highsec => false,
             })
             .collect::<Vec<_>>();
         Some(systems)
@@ -551,31 +568,59 @@ impl Navigatable for Universe {
 ///     .collect::<Vec<_>>();
 /// assert_eq!(2, path.len()); // direct jump through our wormhole
 /// ```
-#[derive(Debug)]
-pub struct ExtendedUniverse<'a> {
-    universe: &'a Universe,
+pub struct ExtendedUniverse<'a, U> {
+    universe: &'a U,
     connections: AdjacentMap,
 }
 
-impl<'a> ExtendedUniverse<'a> {
-    pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
+impl<'a, U: Universish + Navigatable> ExtendedUniverse<'a, U>
+{
+    pub fn new(universe: &'a U, connections: AdjacentMap) -> Self {
         Self {
             universe,
             connections,
         }
     }
+
+}
+impl<'a, U: Universish> Universish for ExtendedUniverse<'a, U> {
+    fn systems(&self) -> Vec<&System> {
+        self.universe.systems()
+    }
+
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
+        let mut connections = Vec::new();
+        for (from, to) in self.universe.connections() {
+            connections.push((from, to));
+        }
+        for adjacent in self.connections.0.values() {
+            for conn in adjacent {
+                connections.push((conn.from, conn.to))
+            }
+        }
+        connections
+    }
 }
 
-impl<'b> Navigatable for ExtendedUniverse<'b> {
+impl<'b, U: Navigatable> Navigatable for ExtendedUniverse<'b, U> {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System> {
         self.universe.get_system(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections
-            .0
-            .get(&from)
-            .or(self.universe.get_connections(from))
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        // TODO: This is highly unoptimal
+        let a = self.connections.0.get(&from);
+        let b = self.universe.get_connections(from);
+        match (a, b) {
+            (Some(a), Some(b)) => {
+                let mut v = a.clone();
+                v.append(&mut b.clone());
+                Some(v)
+            },
+            (Some(a), None) => Some(a.to_vec()),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        }
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
@@ -598,8 +643,8 @@ mod tests {
 mod dbtests {
     use std::env;
 
-    use crate::source::database::DatabaseBuilder;
     use crate::rules;
+    use crate::source::database::DatabaseBuilder;
 
     use super::*;
 
@@ -628,9 +673,7 @@ mod dbtests {
         let camal_id: SystemId = 30000049.into();
         // let faspera_id = 30000044.into();
         b.iter(move || {
-            test::black_box(
-                universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()),
-            );
+            test::black_box(universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()));
         });
         // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
         // assert_eq!(115, jumpable.len());

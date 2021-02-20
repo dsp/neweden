@@ -92,7 +92,7 @@ impl Queryable<schema::mapSolarSystems::SqlType, DB> for types::System {
                 y: row.4.unwrap(),
                 z: row.5.unwrap(),
             },
-            security: types::Security(row.7.unwrap() as f32),
+            security: types::Security(row.7.unwrap()),
         }
     }
 }

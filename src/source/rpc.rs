@@ -34,8 +34,16 @@ fn conv_undirected_to_directed(other: rpctypes::UndirectedConnection) -> Vec<typ
     let id2: types::SystemId = other.1.into();
     // TODO: Fixme
     let stargate_type = types::ConnectionType::Stargate(types::StargateType::Local);
-    let a = types::Connection { from: id1.clone(), to: id2.clone(), type_: stargate_type.clone() };
-    let b = types::Connection { from: id2.clone(), to: id1.clone(), type_: stargate_type.clone() };
+    let a = types::Connection {
+        from: id1.clone(),
+        to: id2.clone(),
+        type_: stargate_type.clone(),
+    };
+    let b = types::Connection {
+        from: id2.clone(),
+        to: id1.clone(),
+        type_: stargate_type.clone(),
+    };
     vec![a, b]
 }
 
@@ -53,12 +61,14 @@ impl RpcTypeBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<types::Universe> {
-        let systems = self.systems
+        let systems = self
+            .systems
             .into_iter()
             .map(|s| s.into())
             .collect::<Vec<_>>();
 
-        let connections = self.connections
+        let connections = self
+            .connections
             .into_iter()
             .flat_map(|c| conv_undirected_to_directed(c))
             .collect::<Vec<_>>();

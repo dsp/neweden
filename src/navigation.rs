@@ -7,32 +7,124 @@ use pathfinding::prelude::dijkstra;
 
 use crate::types;
 
+#[derive(PartialEq)]
+enum PathElementInternal {
+    Waypoint(types::SystemId),
+    System(types::SystemId),
+    Connection(types::ConnectionType)
+}
+
+pub enum PathElement<'a> {
+    Waypoint(&'a types::System),
+    System(&'a types::System),
+    Connection(types::ConnectionType),
+}
+
 pub struct Path<'a> {
-    path: Vec<types::SystemId>,
     cur: usize,
+    jump_count: usize,
+    path: Vec<PathElementInternal>,
     universe: &'a dyn types::Navigatable,
+    waypoints: Vec<&'a types::System>,
 }
 
 impl<'a> Path<'a> {
-    pub(self) fn new(universe: &'a dyn types::Navigatable, path: Vec<types::SystemId>) -> Self {
+    pub(self) fn new(universe: &'a dyn types::Navigatable, waypoints: Vec<&'a types::System>, path: Vec<PathElementInternal>, jump_count: usize) -> Self {
         Self {
+            cur: 0,
+            jump_count,
             path,
             universe,
+            waypoints,
+        }
+    }
+
+    pub fn jumps(&self) -> usize {
+        self.jump_count
+    }
+    
+    pub fn from(&self) -> Option<&'a types::System> {
+        let id = self.path.get(0)?;
+        match id {
+            PathElementInternal::Connection(_) => None,
+            PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+            PathElementInternal::Waypoint(id) => Some(self.universe.get_system(&id).unwrap()),
+        }
+    }
+
+    pub fn to(&self) -> Option<&'a types::System> {
+        let id = self.path.get(self.path.len()-1)?;
+        match id {
+            PathElementInternal::Connection(_) => None,
+            PathElementInternal::System(id) => Some(self.universe.get_system(&id).unwrap()),
+            PathElementInternal::Waypoint(id) => Some(self.universe.get_system(&id).unwrap()),
+        }
+    }
+
+    pub fn iter(&self) -> PathIterator {
+        self.into_iter()
+    }
+}
+
+pub struct PathIterator<'a> {
+    cur: usize,
+    path: &'a Path<'a>,
+}
+
+impl<'a> Iterator for PathIterator<'a> {
+    type Item = PathElement<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur >= self.path.path.len() {
+            return None;
+        }
+        let res = match &self.path.path[self.cur] {
+            PathElementInternal::Waypoint(id) => {
+                PathElement::Waypoint(self.path.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::System(id) => {
+                PathElement::System(self.path.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::Connection(type_) => {
+                PathElement::Connection(type_.clone())
+            },
+        };
+        self.cur += 1;
+        Some(res)
+    }
+}
+
+impl<'a> IntoIterator for &'a Path<'a> {
+    type Item = PathElement<'a>;
+    type IntoIter = PathIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PathIterator {
             cur: 0,
+            path: self,
         }
     }
 }
 
 impl<'a> Iterator for Path<'a> {
-    type Item = &'a types::System;
+    type Item = PathElement<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur >= self.path.len() {
             return None;
         }
-        let system_id = &self.path[self.cur];
+        let res = match &self.path[self.cur] {
+            PathElementInternal::Waypoint(id) => {
+                PathElement::Waypoint(self.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::System(id) => {PathElement::System(self.universe.get_system(&id).unwrap())
+            },
+            PathElementInternal::Connection(type_) => {
+                PathElement::Connection(type_.clone())
+            },
+        };
         self.cur += 1;
-        self.universe.get_system(&system_id)
+        Some(res)
     }
 }
 
@@ -56,13 +148,29 @@ impl Preference {
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1000,
                 }
             }
-            Self::LowsecAndNullsec => {
-                match universe.get_system(&to).unwrap().security.into() {
-                    types::SecurityClass::Highsec => 1000,
-                    types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
-                }
-            }
+            Self::LowsecAndNullsec => match universe.get_system(&to).unwrap().security.into() {
+                types::SecurityClass::Highsec => 1000,
+                types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
+            },
         }
+    }
+}
+
+#[derive(Eq, Clone)]
+struct Succ {
+    id: types::SystemId,
+    via: Option<types::ConnectionType>,
+}
+
+impl std::hash::Hash for Succ {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl std::cmp::PartialEq for Succ {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 
@@ -76,13 +184,18 @@ impl<'a> PathBuilder<'a> {
     pub fn new(universe: &'a dyn types::Navigatable) -> Self {
         Self {
             universe: universe,
-            waypoints: Vec::new(),
+            waypoints: vec![],
             preference: Preference::Shortest,
         }
     }
 
     pub fn waypoint(mut self, system: &'a types::System) -> Self {
         self.waypoints.push(system);
+        self
+    }
+
+    pub fn waypoints(mut self, systems: Vec<&'a types::System>) -> Self {
+        self.waypoints.extend(systems);
         self
     }
 
@@ -94,14 +207,15 @@ impl<'a> PathBuilder<'a> {
     // TODO: We need to include the Connection itself, otherwise connections can be
     // ambiguous in the rare case that a wormhole leads to the same system next door.
     // In practise it likely doesn't matter.
-    pub fn build(self) -> Path<'a> {
-        let successor = |id: &types::SystemId| -> Vec<(types::SystemId, Cost)> {
-            if let Some(connections) = self.universe.get_connections(&id) {
+    pub fn build(self) -> Option<Path<'a>> {
+        let successor = |s: &Succ| -> Vec<(Succ, Cost)> {
+            if let Some(connections) = self.universe.get_connections(&s.id) {
                 connections
                     .iter()
                     .filter_map(|conn| {
                         let cost = self.preference.cost(self.universe, conn.to);
-                        Some((conn.to, cost))
+                        let succ = Succ { id: conn.to, via: Some(conn.type_.clone()) };
+                        Some((succ, cost))
                     })
                     .collect()
             } else {
@@ -109,16 +223,31 @@ impl<'a> PathBuilder<'a> {
             }
         };
 
+        let mut jump_count = 0;
         let mut result = Vec::new();
         for systems_slice in self.waypoints.windows(2) {
             let a = &systems_slice[0];
             let b = &systems_slice[1];
             // we operate only on system ids
-            let (np, _) = dijkstra(&a.id, successor, |id: &types::SystemId| *id == b.id).unwrap();
-            result.extend(np);
+            if let Some((np, _)) = dijkstra(&Succ{id: a.id, via: None}, successor, |s: &Succ| s.id == b.id) {
+                for succ in np {
+                    if let Some(via) = succ.via {
+                        result.push(PathElementInternal::Connection(via));
+                        jump_count += 1;
+                    }
+                    if succ.id == a.id || succ.id == b.id {
+                        result.push(PathElementInternal::Waypoint(succ.id));
+                    } else {
+                        result.push(PathElementInternal::System(succ.id));
+                    }
+                }
+            } else {
+                return None;
+            }
         }
 
-        Path::new(self.universe, result)
+        result.dedup();
+        Some(Path::new(self.universe, self.waypoints, result, jump_count))
     }
 }
 
