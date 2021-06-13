@@ -263,6 +263,14 @@ mod tests {
 
     extern crate test;
 
+    fn systems_only<'a>(pe: PathElement<'a>) -> Option<&crate::types::System> {
+        match pe {
+            PathElement::Waypoint(s) => Some(s),
+            PathElement::System(s) => Some(s),
+            PathElement::Connection(_) => None,
+        }
+    }
+
     #[test]
     fn test_dijkstra() {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
@@ -271,6 +279,8 @@ mod tests {
             .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
             .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .build()
+            .unwrap()
+            .filter_map(systems_only)
             .collect::<Vec<_>>();
         assert_eq!(28, path.len());
         assert_eq!("Jita", path[0].name);
@@ -288,6 +298,8 @@ mod tests {
             .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .prefer(Preference::Highsec)
             .build()
+            .unwrap()
+            .filter_map(systems_only)
             .collect::<Vec<_>>();
         assert_eq!(36, path.len());
         assert_eq!("Jita", path[0].name);
@@ -305,6 +317,8 @@ mod tests {
             .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .prefer(Preference::LowsecAndNullsec)
             .build()
+            .unwrap()
+            .filter_map(systems_only)
             .collect::<Vec<_>>();
         assert_eq!(70, path.len());
         assert_eq!("Jita", path[0].name);
@@ -337,7 +351,6 @@ mod tests {
                     .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
                     .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .build()
-                    .collect::<Vec<_>>(),
             );
         });
     }
@@ -353,7 +366,6 @@ mod tests {
                     .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .prefer(Preference::Highsec)
                     .build()
-                    .collect::<Vec<_>>(),
             );
         });
     }
@@ -369,7 +381,6 @@ mod tests {
                     .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .prefer(Preference::LowsecAndNullsec)
                     .build()
-                    .collect::<Vec<_>>(),
             );
         });
     }
@@ -385,7 +396,6 @@ mod tests {
                     .waypoint(&universe.get_system(&30001947.into()).unwrap()) // 373Z-7
                     .waypoint(&universe.get_system(&30004377.into()).unwrap()) // SVB-RE
                     .build()
-                    .collect::<Vec<_>>(),
             );
         });
     }
@@ -406,6 +416,8 @@ mod tests {
             .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
             .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
             .build()
+            .unwrap()
+            .filter_map(systems_only)
             .collect::<Vec<_>>();
         assert_eq!(18, path.len());
         assert_eq!("Jita", path[0].name);
@@ -430,7 +442,6 @@ mod tests {
                     .waypoint(&universe.get_system(&30000142.into()).unwrap()) // jita
                     .waypoint(&universe.get_system(&30000049.into()).unwrap()) // camal
                     .build()
-                    .collect::<Vec<_>>(),
             );
         });
     }

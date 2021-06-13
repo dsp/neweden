@@ -459,7 +459,7 @@ pub trait Universish {
 ///
 /// let uri = std::env::var("DATABASE_URL").unwrap();
 /// let universe = DatabaseBuilder::new(&uri).build().unwrap();
-/// let system_id = 30000142.into(); // returns a SystemId
+/// let system_id = &30000142.into(); // returns a SystemId
 ///
 /// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
 /// ```
@@ -564,9 +564,9 @@ impl Navigatable for Universe {
 /// let path = PathBuilder::new(&extended)
 ///     .waypoint(extended.get_system(&30002718.into()).unwrap()) // from Rancer
 ///     .waypoint(extended.get_system(&30000049.into()).unwrap()) // to Camal
-///     .build() // returns an iterator
-///     .collect::<Vec<_>>();
-/// assert_eq!(2, path.len()); // direct jump through our wormhole
+///     .build()
+///     .unwrap(); // returns an iterator
+/// assert_eq!(1, path.jumps()); // direct jump through our wormhole
 /// ```
 pub struct ExtendedUniverse<'a, U> {
     universe: &'a U,
@@ -671,11 +671,8 @@ mod dbtests {
         let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let camal_id: SystemId = 30000049.into();
-        // let faspera_id = 30000044.into();
         b.iter(move || {
             test::black_box(universe.get_systems_by_range(&camal_id, Lightyears(7.0).into()));
         });
-        // let jumpable = systems.into_iter().filter(|x| rules::allows_cynos(x)).collect::<Vec<_>>();
-        // assert_eq!(115, jumpable.len());
     }
 }

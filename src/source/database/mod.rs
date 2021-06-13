@@ -33,7 +33,7 @@ type DB = diesel::pg::Pg;
 ///
 /// let uri = std::env::var("DATABASE_URL").unwrap();
 /// let universe = DatabaseBuilder::new(&uri).build().unwrap();
-/// let system_id = 30000142.into(); // returns a SystemId
+/// let system_id = &30000142.into(); // returns a SystemId
 /// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
 /// ```
 pub struct DatabaseBuilder {
