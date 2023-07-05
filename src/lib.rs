@@ -15,7 +15,7 @@
 //! the moment as the dependent crate is not open sourced.
 
 // Must be at the crate root
-#[cfg(feature = "database")]
+#[cfg(feature = "postgres")]
 #[macro_use]
 extern crate diesel;
 

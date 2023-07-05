@@ -3,7 +3,11 @@
  * All rights reserved.
  */
 
-#[cfg(feature = "database")]
-pub mod database;
+#[cfg(feature = "postgres")]
+pub mod postgres;
+
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
+
 #[cfg(feature = "rpc")]
 pub mod rpc;

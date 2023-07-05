@@ -56,12 +56,10 @@ impl Preference {
                     types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1000,
                 }
             }
-            Self::LowsecAndNullsec => {
-                match universe.get_system(&to).unwrap().security.into() {
-                    types::SecurityClass::Highsec => 1000,
-                    types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
-                }
-            }
+            Self::LowsecAndNullsec => match universe.get_system(&to).unwrap().security.into() {
+                types::SecurityClass::Highsec => 1000,
+                types::SecurityClass::Lowsec | types::SecurityClass::Nullsec => 1,
+            },
         }
     }
 }

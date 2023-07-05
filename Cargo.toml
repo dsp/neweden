@@ -10,11 +10,13 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-database = ["diesel"]
+postgres = ["diesel"]
+sqlite = ["rusqlite"]
 
 [dependencies]
-anyhow = "^1.0"
+anyhow = "*"
 diesel = { version = "^1.0", optional = true, features = ["postgres"] }
-pathfinding = "^2.0"
-rstar = "^0.7"
-thiserror = "^1.0"
+rusqlite = { version = "*", optional = true, features = ["bundled"] }
+pathfinding = "*"
+rstar = "*"
+thiserror = "*"

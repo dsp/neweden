@@ -28,7 +28,7 @@ type DB = diesel::pg::Pg;
 /// # Example
 /// ```
 /// use std::env;
-/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::source::postgres::DatabaseBuilder;
 /// use neweden::Navigatable;
 ///
 /// let uri = std::env::var("DATABASE_URL").unwrap();
