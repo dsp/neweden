@@ -404,14 +404,14 @@ pub trait Navigatable {
 /// # Example
 /// ```
 /// use std::env;
-/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::source::sqlite::DatabaseBuilder;
 /// use neweden::Navigatable;
 ///
-/// let uri = std::env::var("DATABASE_URL").unwrap();
+/// let uri = std::env::var("SQLITE_URI").unwrap();
 /// let universe = DatabaseBuilder::new(&uri).build().unwrap();
 /// let system_id = 30000142.into(); // returns a SystemId
 ///
-/// println!("{:?}", universe.get_system(system_id).unwrap().name); // Jita
+/// println!("{:?}", universe.get_system(&system_id).unwrap().name); // Jita
 /// ```
 #[derive(Debug)]
 pub struct Universe {
@@ -529,12 +529,12 @@ impl Navigatable for Universe {
 /// # Example
 /// ```
 /// use std::env;
-/// use neweden::source::database::DatabaseBuilder;
+/// use neweden::source::sqlite::DatabaseBuilder;
 /// use neweden::navigation::PathBuilder;
 /// use neweden::Navigatable;
 /// use neweden::{Connection, ConnectionType, WormholeType};
 ///
-/// let uri = std::env::var("DATABASE_URL").unwrap();
+/// let uri = std::env::var("SQLITE_URI").unwrap();
 /// let wormholes = vec![Connection {
 ///     from: 30002718.into(), // Rancer
 ///     to: 30000049.into(),  // Camal
@@ -592,12 +592,12 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "database"))]
+#[cfg(all(test, feature = "sqlite"))]
 mod dbtests {
     use std::env;
 
     use crate::rules;
-    use crate::source::database::DatabaseBuilder;
+    use crate::source::sqlite::DatabaseBuilder;
 
     use super::*;
 
@@ -605,7 +605,7 @@ mod dbtests {
 
     #[test]
     fn test_range_query() {
-        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let uri = env::var("SQLITE_URI").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let camal_id = 30000049.into();
         // let faspera_id = 30000044.into();
@@ -621,7 +621,7 @@ mod dbtests {
 
     #[bench]
     fn bench_range_query(b: &mut test::Bencher) {
-        let uri = env::var("DATABASE_URL").expect("expected env variable DATABASE_URL set");
+        let uri = env::var("SQLITE_URI").expect("expected env variable DATABASE_URL set");
         let universe = DatabaseBuilder::new(&uri).build().unwrap();
         let camal_id: SystemId = 30000049.into();
         // let faspera_id = 30000044.into();

@@ -7,9 +7,31 @@ pub struct DatabaseBuilder {
     uri: String,
 }
 
+/// Loads a universe from a database.
+///
+/// `Universe` implements `Navigatable` and can be used in pathfinding.
+///
+/// `Universe` is intended to be used immutable and can only be instantiated
+/// from a data source such as a database. If you need to add additional connections,
+/// such as dynamic wormhole connections during pathfinding, construct an `ExtendedUniverse`
+/// from a universe by calling `.extend()` or `ExtendedUniverse::new()`.
+///
+/// # Example
+/// ```
+/// use std::env;
+/// use neweden::source::sqlite::DatabaseBuilder;
+/// use neweden::Navigatable;
+///
+/// let uri = std::env::var("SQLITE_URI").unwrap();
+/// let universe = DatabaseBuilder::new(&uri).build().unwrap();
+/// let system_id = 30000142.into(); // returns a SystemId
+/// println!("{:?}", universe.get_system(&system_id).unwrap().name); // Jita
+/// ```
 impl DatabaseBuilder {
-    pub fn new(uri: String) -> Self {
-        Self { uri }
+    pub fn new(uri: &str) -> Self {
+        Self {
+            uri: uri.to_string(),
+        }
     }
 
     pub fn build(self) -> anyhow::Result<types::Universe> {
@@ -32,7 +54,7 @@ impl DatabaseBuilder {
                 .query([])?
                 .mapped(|row| {
                     Ok(types::System {
-                        id: types::SystemId::from(row.get::<_, i32>(0)?),
+                        id: types::SystemId::from(row.get::<_, u32>(0)?),
                         name: row.get(1)?,
                         coordinate: types::Coordinate {
                             x: row.get(2)?,
