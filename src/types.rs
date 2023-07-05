@@ -208,6 +208,7 @@ pub enum WormholeType {
     Large,     // battleships
     Medium,    // battlecruisers, etc
     Small,     // frigates, etc
+    Unknown,
 }
 
 /// Defines a system class. A system is either part of

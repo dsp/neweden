@@ -1,6 +1,6 @@
 [package]
 name = "neweden"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["David Soria Parra <dsp@experimentalworks.net>"]
 edition = "2021"
 license = 'MIT'
