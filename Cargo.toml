@@ -1,8 +1,8 @@
 [package]
 name = "neweden"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["David Soria Parra <dsp@experimentalworks.net>"]
-edition = "2018"
+edition = "2021"
 license = 'MIT'
 repository = 'https://github.com/dsp/neweden'
 description = 'Library for system inforamtion, wayfinding and range queries in Eve Online'
@@ -14,9 +14,9 @@ postgres = ["diesel"]
 sqlite = ["rusqlite"]
 
 [dependencies]
-anyhow = "^1.0"
-diesel = { version = "^1.0", optional = true, features = ["postgres"] }
-rusqlite = { version = "^0.29", optional = true, features = ["bundled"] }
+anyhow = "^1"
+diesel = { version = "^1", optional = true, features = ["postgres"] }
+rusqlite = { version = "^0.29", optional = true }
 pathfinding = "^4"
 rstar = "^0.11"
 thiserror = "^1"
