@@ -90,7 +90,7 @@ impl From<Security> for SecurityClass {
 }
 
 /// Defines a connection between two systems.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Connection {
     pub from: SystemId,
     pub to: SystemId,
@@ -294,9 +294,12 @@ impl std::hash::Hash for System {
 struct Celestial {}
 
 #[derive(Debug)]
-pub struct SystemMap(HashMap<SystemId, System>);
+pub struct SystemMap(pub(crate) HashMap<SystemId, System>);
 
 impl SystemMap {
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
     pub fn get(&self, k: &SystemId) -> Option<&System> {
         self.0.get(k)
     }
@@ -314,8 +317,13 @@ impl From<Vec<System>> for SystemMap {
 }
 
 #[derive(Debug)]
-pub struct AdjacentMap(HashMap<SystemId, Vec<Connection>>);
+pub struct AdjacentMap(pub(crate) HashMap<SystemId, Vec<Connection>>);
 
+impl AdjacentMap {
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
+}
 impl From<Vec<Connection>> for AdjacentMap {
     fn from(connections: Vec<Connection>) -> Self {
         let mut adjacent_map = HashMap::new();
@@ -389,8 +397,13 @@ pub struct Meters(pub f64);
 /// for pathfinding. Two main implementation exists: `Universe` and `ExtendedUniverse`.
 pub trait Navigatable {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System>;
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>>;
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>>;
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>>;
+}
+
+pub trait Galaxy {
+    fn connections(&self) -> Vec<(SystemId, SystemId)>;
+    fn systems(&self) -> Vec<&System>;
 }
 
 /// Describes the known systesms and their connections in new eden universe.
@@ -415,15 +428,16 @@ pub trait Navigatable {
 /// ```
 #[derive(Debug)]
 pub struct Universe {
-    systems: SystemMap,
-    connections: AdjacentMap,
-    rtree: rstar::RTree<System>,
+    pub(crate) systems: SystemMap,
+    pub(crate) connections: AdjacentMap,
+    pub(crate) rtree: rstar::RTree<System>,
 }
 
 impl System {
     fn to_point(&self) -> [f64; 3] {
         [self.coordinate.x, self.coordinate.y, self.coordinate.z]
     }
+
     fn distance(&self, point: &[f64; 3]) -> Meters {
         let d_x = self.coordinate.x - point[0];
         let d_y = self.coordinate.y - point[1];
@@ -480,15 +494,17 @@ impl Universe {
     /// Extend the universe with new connections. This is useful to add additional
     /// connection, for example wormholes and find paths. The extended universe will
     /// reuse the systems from the existing universe and only take space for new connections.
-    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse {
+    pub fn extend(&self, connections: AdjacentMap) -> ExtendedUniverse<Self> {
         ExtendedUniverse::new(self, connections)
     }
+}
 
-    pub fn systems(&self) -> Vec<&System> {
+impl Galaxy for Universe {
+    fn systems(&self) -> Vec<&System> {
         self.systems.0.values().collect::<Vec<&System>>()
     }
 
-    pub fn connections(&self) -> Vec<(SystemId, SystemId)> {
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
         let mut connections = Vec::new();
         for adjacent in self.connections.0.values() {
             for conn in adjacent {
@@ -504,8 +520,8 @@ impl Navigatable for Universe {
         self.systems.0.get(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections.0.get(from)
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        self.connections.0.get(from).map(|v| v.clone())
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {
@@ -550,30 +566,57 @@ impl Navigatable for Universe {
 /// assert_eq!(2, path.len()); // direct jump through our wormhole
 /// ```
 #[derive(Debug)]
-pub struct ExtendedUniverse<'a> {
-    universe: &'a Universe,
-    connections: AdjacentMap,
+pub struct ExtendedUniverse<'a, U> {
+    pub(crate) universe: &'a U,
+    pub(crate) connections: AdjacentMap,
 }
 
-impl<'a> ExtendedUniverse<'a> {
-    pub fn new(universe: &'a Universe, connections: AdjacentMap) -> Self {
+impl<'a, U: Galaxy + Navigatable> ExtendedUniverse<'a, U> {
+    pub fn new(universe: &'a U, connections: AdjacentMap) -> Self {
         Self {
             universe,
             connections,
         }
     }
 }
+impl<'a, U: Galaxy> Galaxy for ExtendedUniverse<'a, U> {
+    fn systems(&self) -> Vec<&System> {
+        self.universe.systems()
+    }
 
-impl<'b> Navigatable for ExtendedUniverse<'b> {
+    fn connections(&self) -> Vec<(SystemId, SystemId)> {
+        let mut connections = Vec::new();
+        for (from, to) in self.universe.connections() {
+            connections.push((from, to));
+        }
+        for adjacent in self.connections.0.values() {
+            for conn in adjacent {
+                connections.push((conn.from, conn.to))
+            }
+        }
+        connections
+    }
+}
+
+impl<'b, U: Navigatable> Navigatable for ExtendedUniverse<'b, U> {
     fn get_system<'a>(&self, id: &SystemId) -> Option<&System> {
         self.universe.get_system(id)
     }
 
-    fn get_connections<'a>(&self, from: &SystemId) -> Option<&Vec<Connection>> {
-        self.connections
-            .0
-            .get(&from)
-            .or(self.universe.get_connections(from))
+    fn get_connections<'a>(&self, from: &SystemId) -> Option<Vec<Connection>> {
+        // TODO: This is highly unoptimal
+        let a = self.universe.get_connections(from);
+        let b = self.connections.0.get(&from);
+        match (a, b) {
+            (Some(a), Some(b)) => {
+                let mut v = a.clone();
+                v.append(&mut b.clone());
+                Some(v)
+            }
+            (Some(a), None) => Some(a.to_vec()),
+            (None, Some(b)) => Some(b.to_vec()),
+            (None, None) => None,
+        }
     }
 
     fn get_systems_by_range<'a>(&self, from: &SystemId, range: Meters) -> Option<Vec<&System>> {

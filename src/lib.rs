@@ -21,6 +21,7 @@ extern crate diesel;
 
 pub mod source;
 
+pub mod builder;
 pub use types::*;
 #[allow(dead_code)]
 pub mod rules;
