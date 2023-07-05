@@ -60,7 +60,7 @@ To build the repository:
 ```sh
 git clone https://github.com/dsp/neweden
 cd neweden
-cargo build --features database
+cargo build --features sqlite
 ```
 
 ### Running tests
@@ -71,5 +71,6 @@ the env variable `DATABASE_URL`.
 ```sh
 git clone https://github.com/dsp/neweden
 cd neweden
-cargo +nightly test --features database
+export SQLITE_URI="/path/to/sde/dump"
+cargo +nightly test --features sqlite
 ```
