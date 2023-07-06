@@ -136,6 +136,7 @@ impl<'a> Iterator for Path<'a> {
 
 type Cost = u32;
 
+#[derive(Copy, Clone)]
 pub enum Preference {
     Shortest,
     Highsec,
