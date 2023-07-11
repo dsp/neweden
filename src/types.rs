@@ -193,6 +193,13 @@ impl std::convert::Into<Lightyears> for JumpdriveShip {
     }
 }
 
+impl std::convert::Into<Meters> for JumpdriveShip {
+    fn into(self) -> Meters {
+        let ly: Lightyears = self.into();
+        Meters::from(ly)
+    }
+}
+
 /// Information about a stargate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StargateType {
