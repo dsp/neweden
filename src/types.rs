@@ -446,13 +446,17 @@ impl System {
         [self.coordinate.x, self.coordinate.y, self.coordinate.z]
     }
 
-    fn distance(&self, point: &[f64; 3]) -> Meters {
+    fn point_distance(&self, point: &[f64; 3]) -> Meters {
         let d_x = self.coordinate.x - point[0];
         let d_y = self.coordinate.y - point[1];
         let d_z = self.coordinate.z - point[2];
         let distance = (d_x * d_x + d_y * d_y + d_z * d_z).sqrt();
         // We must return the squared distance!
         Meters(distance)
+    }
+
+    pub fn distance(&self, other: &System) -> Meters {
+        self.point_distance(&other.to_point())
     }
 }
 
